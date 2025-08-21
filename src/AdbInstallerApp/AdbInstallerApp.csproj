@@ -1,0 +1,23 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+<PropertyGroup>
+<TargetFramework>net8.0-windows</TargetFramework>
+<UseWPF>true</UseWPF>
+<Nullable>enable</Nullable>
+<ImplicitUsings>enable</ImplicitUsings>
+<AssemblyName>AdbInstallerApp</AssemblyName>
+</PropertyGroup>
+
+
+<ItemGroup>
+<Content Include="appsettings.json">
+<CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+</Content>
+</ItemGroup>
+
+
+<ItemGroup>
+  <PackageReference Include="CommunityToolkit.Mvvm" Version="8.4.0" />
+  <PackageReference Include="Newtonsoft.Json" Version="13.0.3" />
+  <PackageReference Include="Ookii.Dialogs.Wpf" Version="5.0.1" />
+</ItemGroup>
+</Project>
