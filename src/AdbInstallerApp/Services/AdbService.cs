@@ -33,7 +33,6 @@ var list = new List<DeviceInfo>();
 var (code, stdout, _) = await ProcessRunner.RunAsync(_adbPath, "devices");
 if (code != 0) return list;
 
-
 var lines = stdout.Split(new[] {"\r\n", "\n"}, StringSplitOptions.RemoveEmptyEntries);
 foreach (var line in lines.Skip(1)) // skip header
 {
@@ -41,10 +40,76 @@ foreach (var line in lines.Skip(1)) // skip header
 var parts = Regex.Split(line.Trim(), @"\s+");
 if (parts.Length >= 2)
 {
-list.Add(new DeviceInfo { Serial = parts[0], State = parts[1] });
+var device = new DeviceInfo { Serial = parts[0], State = parts[1] };
+if (device.State == "device")
+{
+await EnrichDeviceInfoAsync(device);
+}
+list.Add(device);
 }
 }
 return list;
+}
+
+private async Task EnrichDeviceInfoAsync(DeviceInfo device)
+{
+try
+{
+// Get device properties
+var (code, stdout, _) = await ProcessRunner.RunAsync(_adbPath, $"-s {device.Serial} shell getprop");
+if (code == 0)
+{
+var lines = stdout.Split(new[] {"\r\n", "\n"}, StringSplitOptions.RemoveEmptyEntries);
+foreach (var line in lines)
+{
+if (line.Contains(": "))
+{
+var parts = line.Split(new[] {": "}, 2, StringSplitOptions.None);
+if (parts.Length == 2)
+{
+var key = parts[0].Trim();
+var value = parts[1].Trim().Trim('[', ']');
+
+switch (key)
+{
+case "[ro.product.manufacturer]":
+device.Manufacturer = value;
+break;
+case "[ro.product.model]":
+device.Model = value;
+break;
+case "[ro.product.name]":
+device.Product = value;
+break;
+case "[ro.build.version.release]":
+device.AndroidVersion = value;
+break;
+case "[ro.build.version.sdk]":
+device.Sdk = value;
+break;
+case "[ro.product.cpu.abi]":
+device.Abi = value;
+break;
+case "[ro.sf.lcd_density]":
+device.Density = value;
+break;
+case "[ro.build.display.id]":
+device.BuildNumber = value;
+break;
+}
+}
+}
+}
+
+// Check if device is rooted
+var (rootCode, rootOutput, _) = await ProcessRunner.RunAsync(_adbPath, $"-s {device.Serial} shell which su");
+device.IsRooted = rootCode == 0 && !string.IsNullOrWhiteSpace(rootOutput.Trim());
+}
+}
+catch
+{
+// Ignore errors, use default values
+}
 }
 
 

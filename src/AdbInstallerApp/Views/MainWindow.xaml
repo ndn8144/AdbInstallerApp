@@ -129,11 +129,22 @@ WindowStartupLocation="CenterScreen">
             <DataGrid.Columns>
                 <DataGridCheckBoxColumn Binding="{Binding IsSelected}" 
                                         Header="✓" 
-                                        Width="40"
-                                        />
-                <DataGridTextColumn Binding="{Binding Serial}" 
-                                    Header="Device Serial" 
-                                    Width="*"
+                                        Width="40"/>
+                <DataGridTextColumn Binding="{Binding DisplayName}" 
+                                    Header="Device" 
+                                    Width="180"
+                                    IsReadOnly="True"/>
+                <DataGridTextColumn Binding="{Binding DeviceInfo}" 
+                                    Header="Android Info" 
+                                    Width="120"
+                                    IsReadOnly="True"/>
+                <DataGridTextColumn Binding="{Binding RootStatus}" 
+                                    Header="Root" 
+                                    Width="80"
+                                    IsReadOnly="True"/>
+                <DataGridTextColumn Binding="{Binding Architecture}" 
+                                    Header="Arch" 
+                                    Width="60"
                                     IsReadOnly="True"/>
                 <DataGridTextColumn Binding="{Binding State}" 
                                     Header="Status" 
@@ -174,11 +185,22 @@ WindowStartupLocation="CenterScreen">
             <DataGrid.Columns>
                 <DataGridCheckBoxColumn Binding="{Binding IsSelected}" 
                                         Header="✓" 
-                                        Width="40"
-                                        />
-                <DataGridTextColumn Binding="{Binding FileName}" 
-                                    Header="APK File Name" 
-                                    Width="*"
+                                        Width="40"/>
+                <DataGridTextColumn Binding="{Binding DisplayInfo}" 
+                                    Header="APK Info" 
+                                    Width="200"
+                                    IsReadOnly="True"/>
+                <DataGridTextColumn Binding="{Binding FileSize}" 
+                                    Header="Size" 
+                                    Width="80"
+                                    IsReadOnly="True"/>
+                <DataGridTextColumn Binding="{Binding LastModified}" 
+                                    Header="Modified" 
+                                    Width="120"
+                                    IsReadOnly="True"/>
+                <DataGridTextColumn Binding="{Binding SplitTag}" 
+                                    Header="Split" 
+                                    Width="80"
                                     IsReadOnly="True"/>
             </DataGrid.Columns>
         </DataGrid>

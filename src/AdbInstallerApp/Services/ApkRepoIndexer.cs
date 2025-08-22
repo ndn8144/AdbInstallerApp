@@ -46,10 +46,13 @@ if (!string.IsNullOrWhiteSpace(RepoPath) && Directory.Exists(RepoPath))
 {
 foreach (var f in Directory.GetFiles(RepoPath, "*.apk"))
 {
+var fileInfo = new FileInfo(f);
 Items.Add(new ApkItem
 {
 FilePath = f,
-FileName = Path.GetFileName(f)
+FileName = Path.GetFileName(f),
+FileSize = fileInfo.Length,
+LastModified = fileInfo.LastWriteTime
 });
 }
 }

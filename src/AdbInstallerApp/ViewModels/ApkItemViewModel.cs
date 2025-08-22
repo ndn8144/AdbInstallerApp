@@ -20,5 +20,21 @@ set => SetProperty(ref _isSelected, value);
 
 public string FileName => Model.FileName;
 public string FilePath => Model.FilePath;
+public string FileSize => Model.FileSize > 0 ? FormatFileSize(Model.FileSize) : "";
+public string LastModified => Model.LastModified != DateTime.MinValue ? Model.LastModified.ToString("yyyy-MM-dd HH:mm") : "";
+public string DisplayInfo => !string.IsNullOrEmpty(Model.Package) ? Model.Package : Model.FileName;
+
+private static string FormatFileSize(long bytes)
+{
+string[] sizes = { "B", "KB", "MB", "GB" };
+double len = bytes;
+int order = 0;
+while (len >= 1024 && order < sizes.Length - 1)
+{
+order++;
+len = len / 1024;
+}
+return $"{len:0.##} {sizes[order]}";
+}
 }
 }
