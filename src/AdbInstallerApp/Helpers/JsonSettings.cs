@@ -10,6 +10,20 @@ public string ApkRepoPath { get; set; } = string.Empty;
 public bool Reinstall { get; set; } = true; // -r
 public bool GrantPerms { get; set; } = false; // -g
 public bool Downgrade { get; set; } = false; // -d
+
+// Enhanced installation settings
+public bool EnableParallelInstall { get; set; } = false;
+public int MaxConcurrentDevices { get; set; } = 3;
+public bool AutoSelectOptimalSplits { get; set; } = true;
+public bool ShowCompatibilityWarnings { get; set; } = true;
+
+// Tool paths
+public string AdbPath { get; set; } = "";
+public string AaptPath { get; set; } = "";
+
+// Logging settings
+public bool EnableDetailedLogging { get; set; } = false;
+public int LogRetentionDays { get; set; } = 7;
 }
 
 

@@ -22,7 +22,12 @@ public string FileName => Model.FileName;
 public string FilePath => Model.FilePath;
 public string FileSize => Model.FileSize > 0 ? FormatFileSize(Model.FileSize) : "";
 public string LastModified => Model.LastModified != DateTime.MinValue ? Model.LastModified.ToString("yyyy-MM-dd HH:mm") : "";
-public string DisplayInfo => !string.IsNullOrEmpty(Model.Package) ? Model.Package : Model.FileName;
+public string DisplayInfo => !string.IsNullOrEmpty(Model.AppLabel) ? Model.AppLabel : Model.FileName;
+public string PackageName => Model.PackageName;
+public string VersionInfo => !string.IsNullOrEmpty(Model.VersionName) ? $"v{Model.VersionName}" : "";
+public string TargetSdkVersion => !string.IsNullOrEmpty(Model.TargetSdkVersion) ? $"API {Model.TargetSdkVersion}" : "";
+public string Type => Model.Type.ToString();
+public string SplitTag => Model.SplitTag;
 
 private static string FormatFileSize(long bytes)
 {

@@ -1,0 +1,181 @@
+<Window x:Class="AdbInstallerApp.Views.SettingsDialog"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="⚙️ Settings" Height="500" Width="600"
+        WindowStartupLocation="CenterOwner"
+        Background="{StaticResource BackgroundBrush}"
+        ResizeMode="CanResize">
+    
+    <Grid Margin="20">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+        
+        <!-- Settings Content -->
+        <TabControl Grid.Row="0" Margin="0,0,0,16">
+            
+            <!-- Installation Tab -->
+            <TabItem Header="📦 Installation">
+                <ScrollViewer VerticalScrollBarVisibility="Auto">
+                    <StackPanel Margin="16">
+                        <TextBlock Text="Installation Options" 
+                                   FontSize="18" FontWeight="Bold" 
+                                   Margin="0,0,0,16"/>
+                        
+                        <CheckBox Content="Enable parallel installation" 
+                                  IsChecked="{Binding EnableParallelInstall}"
+                                  Margin="0,0,0,8"/>
+                        
+                        <StackPanel Orientation="Horizontal" Margin="20,5,0,16">
+                            <TextBlock Text="Max concurrent devices:" 
+                                       VerticalAlignment="Center" Width="150"/>
+                            <Slider Value="{Binding MaxConcurrentDevices}" 
+                                    Minimum="1" Maximum="10" Width="100"
+                                    Margin="0,0,10,0"/>
+                            <TextBlock Text="{Binding MaxConcurrentDevices}" 
+                                       VerticalAlignment="Center" Width="30"/>
+                        </StackPanel>
+                        
+                        <CheckBox Content="Auto-select optimal splits" 
+                                  IsChecked="{Binding AutoSelectOptimalSplits}"
+                                  Margin="0,0,0,8"/>
+                        
+                        <CheckBox Content="Show compatibility warnings" 
+                                  IsChecked="{Binding ShowCompatibilityWarnings}"
+                                  Margin="0,0,0,16"/>
+                        
+                        <Separator Margin="0,16"/>
+                        
+                        <TextBlock Text="Default Installation Options" 
+                                   FontSize="16" FontWeight="SemiBold" 
+                                   Margin="0,0,0,12"/>
+                        
+                        <CheckBox Content="Reinstall (-r)" 
+                                  IsChecked="{Binding OptReinstall}"
+                                  Margin="0,0,0,8"/>
+                        
+                        <CheckBox Content="Grant Permissions (-g)" 
+                                  IsChecked="{Binding OptGrantPerms}"
+                                  Margin="0,0,0,8"/>
+                        
+                        <CheckBox Content="Allow Downgrade (-d)" 
+                                  IsChecked="{Binding OptDowngrade}"
+                                  Margin="0,0,0,8"/>
+                    </StackPanel>
+                </ScrollViewer>
+            </TabItem>
+            
+            <!-- Tools Tab -->
+            <TabItem Header="🔧 Tools">
+                <ScrollViewer VerticalScrollBarVisibility="Auto">
+                    <StackPanel Margin="16">
+                        <TextBlock Text="Tool Paths" 
+                                   FontSize="18" FontWeight="Bold" 
+                                   Margin="0,0,0,16"/>
+                        
+                        <TextBlock Text="ADB Path:" Margin="0,0,0,4"/>
+                        <Grid Margin="0,0,0,16">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="Auto"/>
+                            </Grid.ColumnDefinitions>
+                            <TextBox Text="{Binding AdbPath}" 
+                                     Style="{StaticResource ModernTextBoxStyle}"
+                                     Grid.Column="0" Margin="0,0,8,0"/>
+                            <Button Grid.Column="1" Content="Browse" 
+                                    Style="{StaticResource ModernButtonStyle}"
+                                    Command="{Binding BrowseAdbCommand}"/>
+                        </Grid>
+                        
+                        <TextBlock Text="AAPT Path:" Margin="0,0,0,4"/>
+                        <Grid Margin="0,0,0,16">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="Auto"/>
+                            </Grid.ColumnDefinitions>
+                            <TextBox Text="{Binding AaptPath}" 
+                                     Style="{StaticResource ModernTextBoxStyle}"
+                                     Grid.Column="0" Margin="0,0,8,0"/>
+                            <Button Grid.Column="1" Content="Browse" 
+                                    Style="{StaticResource ModernButtonStyle}"
+                                    Command="{Binding BrowseAaptCommand}"/>
+                        </Grid>
+                        
+                        <Separator Margin="0,16"/>
+                        
+                        <TextBlock Text="Auto-detection will use:" 
+                                   FontSize="14" FontWeight="SemiBold" 
+                                   Margin="0,0,0,8"/>
+                        <TextBlock Text="• ADB: tools/platform-tools/adb.exe" 
+                                   Foreground="Gray" Margin="20,0,0,4"/>
+                        <TextBlock Text="• AAPT: Android SDK build-tools" 
+                                   Foreground="Gray" Margin="20,0,0,4"/>
+                    </StackPanel>
+                </ScrollViewer>
+            </TabItem>
+            
+            <!-- Logging Tab -->
+            <TabItem Header="📄 Logging">
+                <ScrollViewer VerticalScrollBarVisibility="Auto">
+                    <StackPanel Margin="16">
+                        <TextBlock Text="Logging Options" 
+                                   FontSize="18" FontWeight="Bold" 
+                                   Margin="0,0,0,16"/>
+                        
+                        <CheckBox Content="Enable detailed logging" 
+                                  IsChecked="{Binding EnableDetailedLogging}"
+                                  Margin="0,0,0,16"/>
+                        
+                        <StackPanel Orientation="Horizontal" Margin="0,5,0,16">
+                            <TextBlock Text="Log retention (days):" 
+                                       VerticalAlignment="Center" Width="150"/>
+                            <Slider Value="{Binding LogRetentionDays}" 
+                                    Minimum="1" Maximum="30" Width="100"
+                                    Margin="0,0,10,0"/>
+                            <TextBlock Text="{Binding LogRetentionDays}" 
+                                       VerticalAlignment="Center" Width="30"/>
+                        </StackPanel>
+                        
+                        <Separator Margin="0,16"/>
+                        
+                        <TextBlock Text="Log Categories" 
+                                   FontSize="16" FontWeight="SemiBold" 
+                                   Margin="0,0,0,12"/>
+                        
+                        <CheckBox Content="Device connection events" 
+                                  IsChecked="True" IsEnabled="False"
+                                  Margin="0,0,0,8"/>
+                        
+                        <CheckBox Content="Installation progress" 
+                                  IsChecked="True" IsEnabled="False"
+                                  Margin="0,0,0,8"/>
+                        
+                        <CheckBox Content="APK analysis results" 
+                                  IsChecked="True" IsEnabled="False"
+                                  Margin="0,0,0,8"/>
+                        
+                        <CheckBox Content="Error details" 
+                                  IsChecked="True" IsEnabled="False"
+                                  Margin="0,0,0,8"/>
+                    </StackPanel>
+                </ScrollViewer>
+            </TabItem>
+        </TabControl>
+        
+        <!-- Buttons -->
+        <StackPanel Grid.Row="1" Orientation="Horizontal" HorizontalAlignment="Right">
+            <Button Content="Reset to Defaults" 
+                    Style="{StaticResource ModernButtonStyle}"
+                    Command="{Binding ResetToDefaultsCommand}"
+                    Margin="0,0,12,0"/>
+            <Button Content="Cancel" 
+                    Style="{StaticResource ModernButtonStyle}"
+                    Click="Cancel_Click"
+                    Margin="0,0,12,0"/>
+            <Button Content="Save" 
+                    Style="{StaticResource AccentButtonStyle}"
+                    Click="Save_Click"/>
+        </StackPanel>
+    </Grid>
+</Window>
