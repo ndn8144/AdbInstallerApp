@@ -1,6 +1,10 @@
 {
   "ExpandedNodes": [
-    ""
+    "",
+    "\\src",
+    "\\src\\AdbInstallerApp",
+    "\\src\\AdbInstallerApp\\Views"
   ],
+  "SelectedNode": "\\src\\AdbInstallerApp\\Views\\MainWindow.xaml.cs",
   "PreviewInSolutionExplorer": false
 }

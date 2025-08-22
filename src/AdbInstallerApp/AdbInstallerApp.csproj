@@ -1,6 +1,7 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 <PropertyGroup>
 <TargetFramework>net8.0-windows</TargetFramework>
+<OutputType>WinExe</OutputType>
 <UseWPF>true</UseWPF>
 <Nullable>enable</Nullable>
 <ImplicitUsings>enable</ImplicitUsings>
@@ -9,15 +10,15 @@
 
 
 <ItemGroup>
-<Content Include="appsettings.json">
+<Content Include="appsettings.json"> <!-- cspell:disable-line -->
 <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
 </Content>
 </ItemGroup>
 
 
 <ItemGroup>
-  <PackageReference Include="CommunityToolkit.Mvvm" Version="8.4.0" />
-  <PackageReference Include="Newtonsoft.Json" Version="13.0.3" />
-  <PackageReference Include="Ookii.Dialogs.Wpf" Version="5.0.1" />
+  <PackageReference Include="CommunityToolkit.Mvvm" Version="8.4.0" /> <!-- cspell:disable-line -->
+  <PackageReference Include="Newtonsoft.Json" Version="13.0.3" /><!-- cspell:disable-line -->
+  <PackageReference Include="Ookii.Dialogs.Wpf" Version="5.0.1" /><!-- cspell:disable-line -->
 </ItemGroup>
 </Project>
