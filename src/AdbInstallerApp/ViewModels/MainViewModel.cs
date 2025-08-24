@@ -34,6 +34,13 @@ namespace AdbInstallerApp.ViewModels
 
         [ObservableProperty]
         private string _logText = string.Empty;
+        
+        [ObservableProperty]
+        private string _currentModule = "Welcome";
+        
+        // Computed properties for display
+        public string DevicesCountText => $"{Devices.Count} Devices";
+        public string ApkFilesCountText => $"{ApkFiles.Count} APKs";
 
         public MainViewModel()
         {
@@ -145,6 +152,84 @@ namespace AdbInstallerApp.ViewModels
             _settings.GrantPerms = OptGrantPerms;
             _settings.Downgrade = OptDowngrade;
             JsonSettings.Save(_settings);
+        }
+        
+        // Navigation Commands
+        [RelayCommand]
+        private void NavigateToDevices() => CurrentModule = "Devices";
+        
+        [RelayCommand]
+        private void NavigateToApkFiles() => CurrentModule = "ApkFiles";
+        
+        [RelayCommand]
+        private void NavigateToInstallQueue() => CurrentModule = "InstallQueue";
+        
+        [RelayCommand]
+        private void NavigateToDeviceTools() => CurrentModule = "DeviceTools";
+        
+        [RelayCommand]
+        private void NavigateToWifiAdb() => CurrentModule = "WifiAdb";
+        
+        [RelayCommand]
+        private void NavigateToScreenshots() => CurrentModule = "Screenshots";
+        
+        [RelayCommand]
+        private void NavigateToLogcat() => CurrentModule = "Logcat";
+        
+        [RelayCommand]
+        private void NavigateToInstalledApps() => CurrentModule = "InstalledApps";
+        
+        [RelayCommand]
+        private void NavigateToReports() => CurrentModule = "Reports";
+        
+        [RelayCommand]
+        private void NavigateToSettings() => CurrentModule = "Settings";
+        
+        // Additional Commands
+        [RelayCommand]
+        private void RefreshAll()
+        {
+            RefreshRepo();
+            // Add other refresh logic here
+        }
+        
+        [RelayCommand]
+        private void ShowStatus()
+        {
+            AppendLog("[INFO] Application Status: Ready");
+        }
+        
+        [RelayCommand]
+        private void ShowHelp()
+        {
+            AppendLog("[INFO] Help: Select a module from the navigation panel to get started");
+        }
+        
+        [RelayCommand]
+        private void SaveSettings()
+        {
+            PersistSettings();
+            AppendLog("[INFO] Settings saved successfully");
+        }
+        
+        [RelayCommand]
+        private void ResetToDefaults()
+        {
+            var result = MessageBox.Show(
+                "Are you sure you want to reset all settings to defaults?",
+                "Reset Settings",
+                MessageBoxButton.YesNo,
+                MessageBoxImage.Question);
+                
+            if (result == MessageBoxResult.Yes)
+            {
+                var defaultSettings = new AppSettings();
+                ApkRepoPath = defaultSettings.ApkRepoPath;
+                OptReinstall = defaultSettings.Reinstall;
+                OptGrantPerms = defaultSettings.GrantPerms;
+                OptDowngrade = defaultSettings.Downgrade;
+                AppendLog("[INFO] Settings reset to defaults");
+            }
         }
     }
 }
