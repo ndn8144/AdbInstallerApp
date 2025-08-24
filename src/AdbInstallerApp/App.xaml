@@ -91,8 +91,124 @@ DispatcherUnhandledException="Application_DispatcherUnhandledException">
         </Setter>
     </Style>
 
-    <!-- Navigation Button Style -->
-    <Style x:Key="NavigationButtonStyle" TargetType="Button">
+            <!-- Card Shadow Effect -->
+        <DropShadowEffect x:Key="CardShadow" 
+                          Color="#20000000" 
+                          Direction="270" 
+                          ShadowDepth="3" 
+                          BlurRadius="10" 
+                          Opacity="0.3"/>
+        
+        <!-- Modern DataGrid Header Style -->
+        <Style x:Key="ModernDataGridHeaderStyle" TargetType="DataGridColumnHeader">
+            <Setter Property="Background" Value="#F8F9FA"/>
+            <Setter Property="Foreground" Value="#333"/>
+            <Setter Property="FontWeight" Value="SemiBold"/>
+            <Setter Property="FontSize" Value="16"/>
+            <Setter Property="Padding" Value="16,12"/>
+            <Setter Property="BorderThickness" Value="0,0,0,2"/>
+            <Setter Property="BorderBrush" Value="#E0E0E0"/>
+            <Setter Property="HorizontalContentAlignment" Value="Left"/>
+            <Setter Property="VerticalContentAlignment" Value="Center"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="DataGridColumnHeader">
+                        <Border Background="{TemplateBinding Background}" 
+                                BorderBrush="{TemplateBinding BorderBrush}"
+                                BorderThickness="{TemplateBinding BorderThickness}"
+                                Padding="{TemplateBinding Padding}">
+                            <ContentPresenter HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}" 
+                                            VerticalAlignment="{TemplateBinding VerticalContentAlignment}"/>
+                        </Border>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+        
+        <!-- Modern DataGrid Row Style -->
+        <Style x:Key="ModernDataGridRowStyle" TargetType="DataGridRow">
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="Margin" Value="0,2"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="DataGridRow">
+                        <Border Background="{TemplateBinding Background}" 
+                                BorderBrush="{TemplateBinding BorderBrush}"
+                                BorderThickness="{TemplateBinding BorderThickness}"
+                                CornerRadius="8"
+                                Margin="{TemplateBinding Margin}">
+                            <SelectiveScrollingGrid>
+                                <SelectiveScrollingGrid.ColumnDefinitions>
+                                    <ColumnDefinition Width="Auto"/>
+                                    <ColumnDefinition Width="*"/>
+                                </SelectiveScrollingGrid.ColumnDefinitions>
+                                <DataGridCellsPresenter Grid.Column="1"/>
+                                <DataGridDetailsPresenter Grid.Column="1"/>
+                                <DataGridRowHeader Grid.Column="0"/>
+                            </SelectiveScrollingGrid>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsSelected" Value="True">
+                                <Setter Property="Background" Value="#E3F2FD"/>
+                                <Setter Property="BorderBrush" Value="#2196F3"/>
+                            </Trigger>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter Property="Background" Value="#F5F5F5"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+        
+        <!-- Modern DataGrid Cell Style -->
+        <Style x:Key="ModernDataGridCellStyle" TargetType="TextBlock">
+            <Setter Property="FontSize" Value="16"/>
+            <Setter Property="FontFamily" Value="Segoe UI"/>
+            <Setter Property="Foreground" Value="#333"/>
+            <Setter Property="VerticalAlignment" Value="Center"/>
+            <Setter Property="Padding" Value="16,8"/>
+            <Setter Property="TextTrimming" Value="CharacterEllipsis"/>
+        </Style>
+        
+        <!-- Modern CheckBox Style for DataGrid -->
+        <Style x:Key="ModernDataGridCheckBoxStyle" TargetType="CheckBox">
+            <Setter Property="FontSize" Value="18"/>
+            <Setter Property="HorizontalAlignment" Value="Center"/>
+            <Setter Property="VerticalAlignment" Value="Center"/>
+            <Setter Property="Margin" Value="8"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="CheckBox">
+                        <Border Background="White" 
+                                BorderBrush="#E0E0E0" 
+                                BorderThickness="2" 
+                                CornerRadius="4"
+                                Width="24" Height="24">
+                            <Path x:Name="CheckMark" 
+                                  Data="M9,20.42L2.79,14.21L5.62,11.38L9,14.77L18.88,4.88L21.71,7.71L9,20.42Z" 
+                                  Fill="White" 
+                                  Stretch="Uniform" 
+                                  Margin="4"
+                                  Opacity="0"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsChecked" Value="True">
+                                <Setter Property="Fill" Value="#2196F3" TargetName="CheckMark"/>
+                                <Setter Property="Opacity" Value="1" TargetName="CheckMark"/>
+                            </Trigger>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter Property="BorderBrush" Value="#2196F3"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+        
+        <!-- Navigation Button Style -->
+        <Style x:Key="NavigationButtonStyle" TargetType="Button">
         <Setter Property="Background" Value="Transparent"/>
         <Setter Property="Foreground" Value="#333"/>
         <Setter Property="BorderThickness" Value="0"/>

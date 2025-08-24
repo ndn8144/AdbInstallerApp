@@ -41,6 +41,7 @@ namespace AdbInstallerApp.ViewModels
         // Computed properties for display
         public string DevicesCountText => $"{Devices.Count} Devices";
         public string ApkFilesCountText => $"{ApkFiles.Count} APKs";
+        public string DeviceStatusSummary => Devices.Count > 0 ? $"{Devices.Count} device(s) connected" : "No devices connected";
 
         public MainViewModel()
         {

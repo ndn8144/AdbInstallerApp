@@ -181,48 +181,88 @@
                 <!-- Devices Module -->
                 <Grid x:Name="DevicesContent" 
                       Visibility="{Binding CurrentModule, Converter={StaticResource ModuleToVisibilityConverter}, ConverterParameter='Devices'}">
-                    <StackPanel>
-                        <TextBlock Text="📱 Connected Devices" 
-                                   FontSize="24" FontWeight="Bold" 
-                                   Foreground="#333" Margin="0,0,0,20"/>
+                                         <StackPanel>
+                         <!-- Header Section -->
+                         <Border CornerRadius="16" Padding="24" Margin="0,0,0,24">
+                             <Border.Background>
+                                 <LinearGradientBrush StartPoint="0,0" EndPoint="1,1">
+                                     <GradientStop Color="#667eea" Offset="0"/>
+                                     <GradientStop Color="#764ba2" Offset="1"/>
+                                 </LinearGradientBrush>
+                             </Border.Background>
+                             <StackPanel>
+                                 <TextBlock Text="📱 Connected Devices" 
+                                            FontSize="28" FontWeight="Bold" 
+                                            Foreground="White" Margin="0,0,0,8"/>
+                                 <TextBlock Text="Manage and monitor your Android devices" 
+                                            FontSize="16" Foreground="White" Opacity="0.9"/>
+                             </StackPanel>
+                         </Border>
+                         
+                         <!-- Device Controls -->
+                         <Border Background="White" CornerRadius="12" Padding="20" Margin="0,0,0,20"
+                                 Effect="{StaticResource CardShadow}">
+                             <StackPanel Orientation="Horizontal">
+                                 <Button Content="🔄 Refresh Devices" 
+                                         Style="{StaticResource AccentButtonStyle}"
+                                         Command="{Binding RefreshDevicesCommand}"
+                                         FontSize="16" Padding="20,12" Margin="0,0,16,0"/>
+                                 <Border Background="#F0F8FF" CornerRadius="8" Padding="16,12" 
+                                         VerticalAlignment="Center">
+                                     <TextBlock Text="{Binding DeviceStatusSummary, FallbackValue='No devices connected'}" 
+                                                Foreground="#1976D2" FontSize="16" FontWeight="Medium"/>
+                                 </Border>
+                             </StackPanel>
+                         </Border>
                         
-                        <!-- Device Controls -->
-                        <StackPanel Orientation="Horizontal" Margin="0,0,0,16">
-                            <Button Content="🔄 Refresh Devices" 
-                                    Style="{StaticResource ModernButtonStyle}"
-                                    Command="{Binding RefreshDevicesCommand}"
-                                    Margin="0,0,12,0"/>
-                            <TextBlock Text="{Binding DeviceStatusSummary, FallbackValue='No devices connected'}" 
-                                       Foreground="#666" VerticalAlignment="Center"/>
-                        </StackPanel>
-                        
-                        <!-- Devices DataGrid -->
-                        <DataGrid ItemsSource="{Binding Devices}" 
-                                  AutoGenerateColumns="False" 
-                                  CanUserAddRows="False"
-                                  CanUserDeleteRows="False"
-                                  CanUserResizeRows="False"
-                                  GridLinesVisibility="Horizontal"
-                                  HeadersVisibility="Column"
-                                  SelectionMode="Single"
-                                  Background="White"
-                                  RowBackground="White"
-                                  AlternatingRowBackground="#F8F9FA">
-                            <DataGrid.Columns>
-                                <DataGridCheckBoxColumn Binding="{Binding IsSelected}" 
-                                                        Header="✓" Width="40"/>
-                                <DataGridTextColumn Binding="{Binding DisplayName}" 
-                                                    Header="Device" Width="180" IsReadOnly="True"/>
-                                <DataGridTextColumn Binding="{Binding DeviceInfo}" 
-                                                    Header="Android Info" Width="120" IsReadOnly="True"/>
-                                <DataGridTextColumn Binding="{Binding RootStatus}" 
-                                                    Header="Root" Width="80" IsReadOnly="True"/>
-                                <DataGridTextColumn Binding="{Binding Architecture}" 
-                                                    Header="Arch" Width="60" IsReadOnly="True"/>
-                                <DataGridTextColumn Binding="{Binding State}" 
-                                                    Header="Status" Width="80" IsReadOnly="True"/>
-                            </DataGrid.Columns>
-                        </DataGrid>
+                                                 <!-- Devices DataGrid -->
+                         <Border Background="White" CornerRadius="12" Padding="20" Margin="0,0,0,20" 
+                                 Effect="{StaticResource CardShadow}">
+                             <DataGrid ItemsSource="{Binding Devices}" 
+                                       AutoGenerateColumns="False" 
+                                       CanUserAddRows="False"
+                                       CanUserDeleteRows="False"
+                                       CanUserResizeRows="False"
+                                       GridLinesVisibility="None"
+                                       HeadersVisibility="Column"
+                                       SelectionMode="Single"
+                                       Background="Transparent"
+                                       RowBackground="Transparent"
+                                       AlternatingRowBackground="#F8F9FA"
+                                       RowHeight="40"
+                                       FontSize="16"
+                                       FontFamily="Segoe UI"
+                                       BorderThickness="0"
+                                       CanUserSortColumns="True"
+                                       CanUserReorderColumns="True">
+                                 <DataGrid.Columns>
+                                     <DataGridCheckBoxColumn Binding="{Binding IsSelected}" 
+                                                             Header="✓" Width="40" 
+                                                             HeaderStyle="{StaticResource ModernDataGridHeaderStyle}"
+                                                             ElementStyle="{StaticResource ModernDataGridCheckBoxStyle}"/>
+                                     <DataGridTextColumn Binding="{Binding DisplayName}" 
+                                                         Header="Device Name" Width="250" IsReadOnly="True"
+                                                         HeaderStyle="{StaticResource ModernDataGridHeaderStyle}"
+                                                         ElementStyle="{StaticResource ModernDataGridCellStyle}"/>
+                                     <DataGridTextColumn Binding="{Binding DeviceInfo}" 
+                                                         Header="Android Version" Width="180" IsReadOnly="True"
+                                                         HeaderStyle="{StaticResource ModernDataGridHeaderStyle}"
+                                                         ElementStyle="{StaticResource ModernDataGridCellStyle}"/>
+                                     <DataGridTextColumn Binding="{Binding RootStatus}" 
+                                                         Header="Root Status" Width="120" IsReadOnly="True"
+                                                         HeaderStyle="{StaticResource ModernDataGridHeaderStyle}"
+                                                         ElementStyle="{StaticResource ModernDataGridCellStyle}"/>
+                                     <DataGridTextColumn Binding="{Binding Architecture}" 
+                                                         Header="Architecture" Width="140" IsReadOnly="True"
+                                                         HeaderStyle="{StaticResource ModernDataGridHeaderStyle}"
+                                                         ElementStyle="{StaticResource ModernDataGridCellStyle}"/>
+                                     <DataGridTextColumn Binding="{Binding State}" 
+                                                         Header="Connection" Width="120" IsReadOnly="True"
+                                                         HeaderStyle="{StaticResource ModernDataGridHeaderStyle}"
+                                                         ElementStyle="{StaticResource ModernDataGridCellStyle}"/>
+                                 </DataGrid.Columns>
+                             </DataGrid>
+                         </Border>
                     </StackPanel>
                 </Grid>
                 
@@ -236,13 +276,13 @@
                         
                         <!-- Repository Controls -->
                         <StackPanel Orientation="Horizontal" Margin="0,0,0,16">
-                            <Button Content="📁 Choose APK Folder" 
+                            <Button Content="📁 Choose APK Repository" 
                                     Style="{StaticResource ModernButtonStyle}"
                                     Command="{Binding ChooseRepoCommand}"
                                     Margin="0,0,12,0"/>
                             <TextBox Text="{Binding ApkRepoPath, FallbackValue='No folder selected'}" 
                                      Style="{StaticResource ModernTextBoxStyle}"
-                                     IsReadOnly="True" Width="400" 
+                                     IsReadOnly="True" Width="800" 
                                      VerticalAlignment="Center"
                                      Margin="0,0,12,0"/>
                             <Button Content="🔄 Rescan"
