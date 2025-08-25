@@ -7,8 +7,8 @@ DispatcherUnhandledException="Application_DispatcherUnhandledException">
     <!-- App icon resource -->
     <Image x:Key="AppIcon" Source="Assets/Icons/android.png"/>
     <!-- Font Resources -->
-    <FontFamily x:Key="RobotoFont">./Assets/Fonts/Roboto-Regular.ttf#RobotoRegular</FontFamily>
-    <FontFamily x:Key="RobotoLightFont">./Assets/Fonts/Roboto-VariableFont.ttf#RobotoLight</FontFamily>
+    <FontFamily x:Key="RobotoFont">./Assets/Fonts/Roboto-Regular.ttf#Roboto</FontFamily>
+    <FontFamily x:Key="RobotoLightFont">./Assets/Fonts/Roboto-VariableFont.ttf#Roboto</FontFamily>
     <!-- Modern Color Palette -->
     <SolidColorBrush x:Key="PrimaryBrush" Color="#667eea"/>
     <SolidColorBrush x:Key="PrimaryDarkBrush" Color="#764ba2"/>

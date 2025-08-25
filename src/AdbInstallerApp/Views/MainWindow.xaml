@@ -399,7 +399,7 @@
                                         </Setter>
                                     </Style>
                                     <Style x:Key="LeftAlignedCellStyle" TargetType="DataGridCell">
-                                            <Setter Property="FontFamily" Value="{StaticResource RobotoFont}"/>
+                                            <Setter Property="FontFamily" Value="{StaticResource RobotoLightFont}"/>
                                             <Setter Property="BorderBrush" Value="#E0E0E0"/>
                                             <Setter Property="BorderThickness" Value="0,0,0,1"/>
                                             <Setter Property="Template">
