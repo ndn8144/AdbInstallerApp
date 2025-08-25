@@ -27,8 +27,13 @@
         
         <!-- Header Bar -->
         <Border Grid.Row="0" 
-                Background="#2196F3" 
                 Padding="20,15">
+                    <Border.Background>
+                        <LinearGradientBrush StartPoint="0,0" EndPoint="1,1">
+                            <GradientStop Color="#764ba2" Offset="0"/>
+                            <GradientStop Color="#667eea" Offset="1"/>
+                        </LinearGradientBrush>
+                    </Border.Background>
             <Grid>
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="Auto"/>
@@ -64,8 +69,8 @@
         <!-- Main Content Area -->
         <Grid Grid.Row="1">
             <Grid.ColumnDefinitions>
-                <ColumnDefinition Width="250"/>
-                <ColumnDefinition Width="*"/>
+                <ColumnDefinition Width="250" MinWidth="200" MaxWidth="350"/>
+                <ColumnDefinition Width="*" MinWidth="600"/>
             </Grid.ColumnDefinitions>
             
             <!-- Left Navigation Panel -->
@@ -157,7 +162,6 @@
             <Border Grid.Column="1" 
                     Background="#F8F9FA" 
                     Padding="30">
-                
                 <Grid>
                     <!-- Welcome Screen (Default) -->
                     <Grid x:Name="WelcomeContent" 
@@ -183,84 +187,104 @@
                       Visibility="{Binding CurrentModule, Converter={StaticResource ModuleToVisibilityConverter}, ConverterParameter='Devices'}">
                                          <StackPanel>
                          <!-- Header Section -->
-                         <Border CornerRadius="16" Padding="24" Margin="0,0,0,24">
+                         <Border CornerRadius="12" Padding="12" Margin="0,0,0,12">
                              <Border.Background>
                                  <LinearGradientBrush StartPoint="0,0" EndPoint="1,1">
-                                     <GradientStop Color="#667eea" Offset="0"/>
-                                     <GradientStop Color="#764ba2" Offset="1"/>
+                                     <GradientStop Color="#764ba2" Offset="0"/>
+                                     <GradientStop Color="#667eea" Offset="1"/>
                                  </LinearGradientBrush>
                              </Border.Background>
                              <StackPanel>
                                  <TextBlock Text="📱 Connected Devices" 
-                                            FontSize="28" FontWeight="Bold" 
+                                            FontSize="24" FontWeight="Bold" 
                                             Foreground="White" Margin="0,0,0,8"/>
                                  <TextBlock Text="Manage and monitor your Android devices" 
-                                            FontSize="16" Foreground="White" Opacity="0.9"/>
+                                            FontSize="14" Foreground="White" Opacity="0.9"/>
                              </StackPanel>
                          </Border>
                          
                          <!-- Device Controls -->
                          <Border Background="White" CornerRadius="12" Padding="20" Margin="0,0,0,20"
                                  Effect="{StaticResource CardShadow}">
-                             <StackPanel Orientation="Horizontal">
-                                 <Button Content="🔄 Refresh Devices" 
-                                         Style="{StaticResource AccentButtonStyle}"
-                                         Command="{Binding RefreshDevicesCommand}"
-                                         FontSize="16" Padding="20,12" Margin="0,0,16,0"/>
-                                 <Border Background="#F0F8FF" CornerRadius="8" Padding="16,12" 
-                                         VerticalAlignment="Center">
-                                     <TextBlock Text="{Binding DeviceStatusSummary, FallbackValue='No devices connected'}" 
-                                                Foreground="#1976D2" FontSize="16" FontWeight="Medium"/>
-                                 </Border>
+                             <StackPanel>                                
+                                 <!-- First Row: Selection Controls and Status -->
+                                 <Grid>
+                                     <Grid.ColumnDefinitions>
+                                         <ColumnDefinition Width="Auto"/>
+                                         <ColumnDefinition Width="*"/>
+                                         <ColumnDefinition Width="Auto"/>
+                                     </Grid.ColumnDefinitions>
+                                     <StackPanel Grid.Column="0" Orientation="Horizontal">
+                                         <Button Content="☑️ Select All" 
+                                                 Style="{StaticResource ModernButtonStyle}"
+                                                 Command="{Binding SelectAllDevicesCommand}"
+                                                 FontSize="14" Padding="12,10" Margin="0,0,12,0"/>
+                                         <Button Content="❌ Clear Selection" 
+                                                 Style="{StaticResource ModernButtonStyle}"
+                                                 Command="{Binding ClearDeviceSelectionCommand}"
+                                                 FontSize="14" Padding="12,10" Margin="0,0,12,0"/>
+                                     </StackPanel>
+                                     <Border Grid.Column="2" Background="#E8F5E8" CornerRadius="8" Padding="12,12" 
+                                             VerticalAlignment="Center">
+                                         <TextBlock Text="{Binding SelectedDevicesCountText, FallbackValue='No devices selected'}" 
+                                                    Foreground="#2E7D32" FontSize="14" FontWeight="Medium"/>
+                                     </Border>
+                                 </Grid>
                              </StackPanel>
                          </Border>
                         
                                                  <!-- Devices DataGrid -->
-                         <Border Background="White" CornerRadius="12" Padding="20" Margin="0,0,0,20" 
+                         <Border Background="White" CornerRadius="12" Padding="12" Margin="0,0,0,12" 
                                  Effect="{StaticResource CardShadow}">
-                             <DataGrid ItemsSource="{Binding Devices}" 
+                             <DataGrid x:Name="DevicesDataGrid"
+                                       ItemsSource="{Binding Devices}" 
                                        AutoGenerateColumns="False" 
                                        CanUserAddRows="False"
                                        CanUserDeleteRows="False"
                                        CanUserResizeRows="False"
-                                       GridLinesVisibility="None"
+                                       GridLinesVisibility="Horizontal"
                                        HeadersVisibility="Column"
                                        SelectionMode="Single"
-                                       Background="Transparent"
-                                       RowBackground="Transparent"
+                                       Background="White"
+                                       RowBackground="White"
                                        AlternatingRowBackground="#F8F9FA"
-                                       RowHeight="40"
-                                       FontSize="16"
+                                       RowHeight="50"
+                                       FontSize="13"
                                        FontFamily="Segoe UI"
-                                       BorderThickness="0"
+                                       BorderThickness="1"
+                                       BorderBrush="#E0E0E0"
                                        CanUserSortColumns="True"
-                                       CanUserReorderColumns="True">
-                                 <DataGrid.Columns>
-                                     <DataGridCheckBoxColumn Binding="{Binding IsSelected}" 
-                                                             Header="✓" Width="40" 
-                                                             HeaderStyle="{StaticResource ModernDataGridHeaderStyle}"
-                                                             ElementStyle="{StaticResource ModernDataGridCheckBoxStyle}"/>
-                                     <DataGridTextColumn Binding="{Binding DisplayName}" 
-                                                         Header="Device Name" Width="250" IsReadOnly="True"
-                                                         HeaderStyle="{StaticResource ModernDataGridHeaderStyle}"
-                                                         ElementStyle="{StaticResource ModernDataGridCellStyle}"/>
-                                     <DataGridTextColumn Binding="{Binding DeviceInfo}" 
-                                                         Header="Android Version" Width="180" IsReadOnly="True"
-                                                         HeaderStyle="{StaticResource ModernDataGridHeaderStyle}"
-                                                         ElementStyle="{StaticResource ModernDataGridCellStyle}"/>
-                                     <DataGridTextColumn Binding="{Binding RootStatus}" 
-                                                         Header="Root Status" Width="120" IsReadOnly="True"
-                                                         HeaderStyle="{StaticResource ModernDataGridHeaderStyle}"
-                                                         ElementStyle="{StaticResource ModernDataGridCellStyle}"/>
-                                     <DataGridTextColumn Binding="{Binding Architecture}" 
-                                                         Header="Architecture" Width="140" IsReadOnly="True"
-                                                         HeaderStyle="{StaticResource ModernDataGridHeaderStyle}"
-                                                         ElementStyle="{StaticResource ModernDataGridCellStyle}"/>
-                                     <DataGridTextColumn Binding="{Binding State}" 
-                                                         Header="Connection" Width="120" IsReadOnly="True"
-                                                         HeaderStyle="{StaticResource ModernDataGridHeaderStyle}"
-                                                         ElementStyle="{StaticResource ModernDataGridCellStyle}"/>
-                                 </DataGrid.Columns>
+                                       CanUserReorderColumns="False"
+                                       IsReadOnly="False"
+                                       EnableRowVirtualization="True"
+                                       VirtualizingStackPanel.IsVirtualizing="True"
+                                       ScrollViewer.CanContentScroll="True"
+                                       IsSynchronizedWithCurrentItem="False"
+                                       IsTextSearchEnabled="False"
+                                       ColumnHeaderHeight="45"
+                                       CellStyle="{StaticResource ModernDataGridCellStyle}">
+                                <DataGrid.Columns>
+                                    <!-- ✅ CheckBox Column với custom style -->
+                                    <DataGridCheckBoxColumn Binding="{Binding IsSelected, UpdateSourceTrigger=PropertyChanged}" 
+                                                            Header="✓" 
+                                                            Width="50"
+                                                            ElementStyle="{StaticResource ModernDataGridCheckBoxStyle}"/>
+                                    
+                                    <DataGridTextColumn Binding="{Binding DisplayName, Mode=OneWay}" 
+                                                        Header="Device Name" Width="*" MinWidth="200" MaxWidth="350" IsReadOnly="True"/>
+                                    
+                                    <DataGridTextColumn Binding="{Binding DeviceInfo, Mode=OneWay}" 
+                                                        Header="Android Version" Width="*" MinWidth="140" MaxWidth="220" IsReadOnly="True"/>
+                                    
+                                    <DataGridTextColumn Binding="{Binding RootStatus, Mode=OneWay}" 
+                                                        Header="Root Status" Width="*" MinWidth="100" MaxWidth="150" IsReadOnly="True"/>
+                                    
+                                    <DataGridTextColumn Binding="{Binding Architecture, Mode=OneWay}" 
+                                                        Header="Architecture" Width="*" MinWidth="100" MaxWidth="140" IsReadOnly="True"/>
+                                    
+                                    <DataGridTextColumn Binding="{Binding State, Mode=OneWay}" 
+                                                        Header="Connection" Width="*" MinWidth="100" MaxWidth="150" IsReadOnly="True"/>
+                                </DataGrid.Columns>
                              </DataGrid>
                          </Border>
                     </StackPanel>
@@ -275,46 +299,191 @@
                                    Foreground="#333" Margin="0,0,0,20"/>
                         
                         <!-- Repository Controls -->
-                        <StackPanel Orientation="Horizontal" Margin="0,0,0,16">
-                            <Button Content="📁 Choose APK Repository" 
+                        <Grid Margin="0,0,0,12">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="Auto"/>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="Auto"/>
+                            </Grid.ColumnDefinitions>
+                            <Button Grid.Column="0" Content="📁 Choose APK Repository" 
                                     Style="{StaticResource ModernButtonStyle}"
                                     Command="{Binding ChooseRepoCommand}"
-                                    Margin="0,0,12,0"/>
-                            <TextBox Text="{Binding ApkRepoPath, FallbackValue='No folder selected'}" 
+                                    Margin="0,0,12,0"
+                                    FontSize="12" Padding="12,10"/>
+                            <TextBox Grid.Column="1" Text="{Binding ApkRepoPath, FallbackValue='No folder selected'}" 
                                      Style="{StaticResource ModernTextBoxStyle}"
-                                     IsReadOnly="True" Width="800" 
+                                     IsReadOnly="True" 
                                      VerticalAlignment="Center"
-                                     Margin="0,0,12,0"/>
-                            <Button Content="🔄 Rescan"
+                                     Margin="0,0,12,0"
+                                     FontSize="10" Padding="12,10"/>
+                            <Button Grid.Column="2" Content="🔄 Rescan"
                                     Style="{StaticResource ModernButtonStyle}"
-                                    Command="{Binding RefreshRepoCommand}"/>
-                        </StackPanel>
+                                    Command="{Binding RefreshRepoCommand}"
+                                    FontSize="12" Padding="12,10"/>
+                        </Grid>
+                        
+                        <!-- APK Selection Controls -->
+                        <Border Background="White" CornerRadius="12" Padding="12" Margin="0,0,0,12"
+                                Effect="{StaticResource CardShadow}">
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="Auto"/>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="Auto"/>
+                                </Grid.ColumnDefinitions>
+                                <!-- Selection Controls -->
+                                <StackPanel Grid.Column="0" Orientation="Horizontal" Margin="0,0,0,12">
+                                    <Button Content="☑️ Select All APKs" 
+                                            Style="{StaticResource ModernButtonStyle}"
+                                            Command="{Binding SelectAllApksCommand}"
+                                            FontSize="14" Padding="12,10" Margin="0,0,12,0"/>
+                                    <Button Content="❌ Clear APK Selection" 
+                                            Style="{StaticResource ModernButtonStyle}"
+                                            Command="{Binding ClearApkSelectionCommand}"
+                                            FontSize="14" Padding="12,10" Margin="0,0,12,0"/>
+                                </StackPanel>
+                                <Border Grid.Column="2" Background="#E8F5E8" CornerRadius="8" Padding="12,12" 
+                                        VerticalAlignment="Center">
+                                    <TextBlock Text="{Binding SelectedApksCountText, FallbackValue='No APK selected'}" 
+                                               Foreground="#2E7D32" FontSize="14" FontWeight="Medium"/>
+                                </Border>
+                            </Grid>
+                        </Border>
                         
                         <!-- APK Files DataGrid -->
-                        <DataGrid ItemsSource="{Binding ApkFiles}" 
-                                  AutoGenerateColumns="False" 
-                                  CanUserAddRows="False"
-                                  CanUserDeleteRows="False"
-                                  CanUserResizeRows="False"
-                                  GridLinesVisibility="Horizontal"
-                                  HeadersVisibility="Column"
-                                  SelectionMode="Single"
-                                  Background="White"
-                                  RowBackground="White"
-                                  AlternatingRowBackground="#F8F9FA">
-                            <DataGrid.Columns>
-                                <DataGridCheckBoxColumn Binding="{Binding IsSelected}" 
-                                                        Header="✓" Width="40"/>
-                                <DataGridTextColumn Binding="{Binding DisplayInfo}" 
-                                                    Header="APK Info" Width="200" IsReadOnly="True"/>
-                                <DataGridTextColumn Binding="{Binding FileSize}" 
-                                                    Header="Size" Width="80" IsReadOnly="True"/>
-                                <DataGridTextColumn Binding="{Binding LastModified}" 
-                                                    Header="Modified" Width="120" IsReadOnly="True"/>
-                                <DataGridTextColumn Binding="{Binding SplitTag}" 
-                                                    Header="Split" Width="80" IsReadOnly="True"/>
-                            </DataGrid.Columns>
-                        </DataGrid>
+                            <DataGrid x:Name="ApkFilesDataGrid"
+                                    ItemsSource="{Binding ApkFiles}" 
+                                    AutoGenerateColumns="False" 
+                                    CanUserAddRows="False"
+                                    CanUserDeleteRows="False"
+                                    CanUserResizeRows="False"
+                                    GridLinesVisibility="Horizontal"
+                                    HeadersVisibility="Column"
+                                    SelectionMode="Single"
+                                    Background="White"
+                                    RowBackground="White"
+                                    AlternatingRowBackground="#F8F9FA"
+                                    RowHeight="36"
+                                    FontSize="12"
+                                    FontFamily="Inter"
+                                    BorderThickness="0"
+                                    BorderBrush="#E0E0E0"
+                                    CanUserSortColumns="True"
+                                    CanUserReorderColumns="False"
+                                    IsReadOnly="False"
+                                    EnableRowVirtualization="True"
+                                    EnableColumnVirtualization="True"
+                                    VirtualizingStackPanel.IsVirtualizing="True"
+                                    ScrollViewer.CanContentScroll="True"
+                                    IsSynchronizedWithCurrentItem="False"
+                                    IsTextSearchEnabled="False"
+                                    ColumnHeaderHeight="36"
+                                    SelectionChanged="ApkFilesDataGrid_SelectionChanged">
+                                <DataGrid.Resources>
+                                    <!-- Center alignment style for all cells -->
+                                    <Style x:Key="CenterAlignedCellStyle" TargetType="DataGridCell">
+                                        <Setter Property="BorderBrush" Value="#E0E0E0"/>
+                                        <Setter Property="BorderThickness" Value="0,0,0,1"/>
+                                        <Setter Property="Template">
+                                            <Setter.Value>
+                                                <ControlTemplate TargetType="DataGridCell">
+                                                    <Border BorderBrush="{TemplateBinding BorderBrush}" 
+                                                            BorderThickness="{TemplateBinding BorderThickness}"
+                                                            Background="{TemplateBinding Background}">
+                                                        <ContentPresenter HorizontalAlignment="Center" 
+                                                                        VerticalAlignment="Center" 
+                                                                        Margin="3"/>
+                                                    </Border>
+                                                </ControlTemplate>
+                                            </Setter.Value>
+                                        </Setter>
+                                    </Style>
+                                    <Style x:Key="LeftAlignedCellStyle" TargetType="DataGridCell">
+                                            <Setter Property="FontFamily" Value="{StaticResource RobotoFont}"/>
+                                            <Setter Property="BorderBrush" Value="#E0E0E0"/>
+                                            <Setter Property="BorderThickness" Value="0,0,0,1"/>
+                                            <Setter Property="Template">
+                                                <Setter.Value>
+                                                    <ControlTemplate TargetType="DataGridCell">
+                                                        <Border BorderBrush="{TemplateBinding BorderBrush}" 
+                                                                BorderThickness="{TemplateBinding BorderThickness}" 
+                                                                Background="{TemplateBinding Background}">
+                                                            <ContentPresenter HorizontalAlignment="Left" 
+                                                                            VerticalAlignment="Center" 
+                                                                            Margin="2"/>
+                                                        </Border>
+                                                    </ControlTemplate>
+                                                </Setter.Value>
+                                            </Setter>
+                                    </Style>
+                                    <!-- Center alignment style for headers -->
+                                    <Style x:Key="CenterAlignedHeaderStyle" TargetType="DataGridColumnHeader">
+                                        <Setter Property="HorizontalContentAlignment" Value="Center"/>
+                                        <Setter Property="VerticalContentAlignment" Value="Center"/>
+                                        <Setter Property="FontWeight" Value="SemiBold"/>
+                                        <Setter Property="FontSize" Value="13"/>
+                                        <Setter Property="Foreground" Value="#333"/>
+                                    </Style>
+                                    
+                                    <!-- Special style for checkbox column to center the checkbox -->
+                                    <Style x:Key="CenterAlignedCheckBoxColumnStyle" TargetType="DataGridCell">
+                                        <Setter Property="FontWeight" Value="Medium"/>
+                                        <Setter Property="FontSize" Value="10"/>
+                                        <Setter Property="Template">
+                                            <Setter.Value>
+                                                <ControlTemplate TargetType="DataGridCell">
+                                                    <Border BorderBrush="{TemplateBinding BorderBrush}" 
+                                                            BorderThickness="{TemplateBinding BorderThickness}" 
+                                                            Background="{TemplateBinding Background}">
+                                                        <ContentPresenter HorizontalAlignment="Center" 
+                                                                        VerticalAlignment="Center" 
+                                                                        Margin="2"/>
+                                                    </Border>
+                                                </ControlTemplate>
+                                            </Setter.Value>
+                                        </Setter>
+                                    </Style>
+                                </DataGrid.Resources>
+                                <DataGrid.Columns>
+                                    <DataGridCheckBoxColumn Binding="{Binding IsSelected, UpdateSourceTrigger=PropertyChanged}" 
+                                                            Header="✓" 
+                                                            Width="40"
+                                                            HeaderStyle="{StaticResource CenterAlignedHeaderStyle}"
+                                                            CellStyle="{StaticResource CenterAlignedCheckBoxColumnStyle}"/>
+                                    <DataGridTextColumn Binding="{Binding DisplayInfo, Mode=OneWay}" 
+                                                        Header="APK Information" 
+                                                        Width="*" 
+                                                        MinWidth="100" 
+                                                        MaxWidth="200" 
+                                                        IsReadOnly="True"
+                                                        HeaderStyle="{StaticResource CenterAlignedHeaderStyle}"
+                                                        CellStyle="{StaticResource LeftAlignedCellStyle}"/>
+                                    <DataGridTextColumn Binding="{Binding FileSize, Mode=OneWay}" 
+                                                        Header="Size" 
+                                                        Width="*" 
+                                                        MinWidth="80" 
+                                                        MaxWidth="120" 
+                                                        IsReadOnly="True"
+                                                        HeaderStyle="{StaticResource CenterAlignedHeaderStyle}"
+                                                        CellStyle="{StaticResource CenterAlignedCellStyle}"/>
+                                    <DataGridTextColumn Binding="{Binding LastModified, Mode=OneWay}" 
+                                                        Header="Modified" 
+                                                        Width="*" 
+                                                        MinWidth="120" 
+                                                        MaxWidth="180" 
+                                                        IsReadOnly="True"
+                                                        HeaderStyle="{StaticResource CenterAlignedHeaderStyle}"
+                                                        CellStyle="{StaticResource CenterAlignedCellStyle}"/>
+                                    <DataGridTextColumn Binding="{Binding SplitTag, Mode=OneWay}" 
+                                                        Header="Split" 
+                                                        Width="*" 
+                                                        MinWidth="80" 
+                                                        MaxWidth="120" 
+                                                        IsReadOnly="True"
+                                                        HeaderStyle="{StaticResource CenterAlignedHeaderStyle}"
+                                                        CellStyle="{StaticResource CenterAlignedCellStyle}"/>
+                                </DataGrid.Columns>
+                            </DataGrid>
                     </StackPanel>
                 </Grid>
                 
@@ -327,27 +496,37 @@
                                    Foreground="#333" Margin="0,0,0,20"/>
                         
                         <!-- Installation Controls -->
-                        <StackPanel Orientation="Horizontal" Margin="0,0,0,16">
-                            <Button Content="⚡ Install on Selected Devices" 
+                        <Grid Margin="0,0,0,16">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="Auto"/>
+                                <ColumnDefinition Width="*"/>
+                            </Grid.ColumnDefinitions>
+                            <Button Grid.Column="0" Content="⚡ Install on Selected Devices" 
                                     Style="{StaticResource AccentButtonStyle}"
                                     Command="{Binding InstallOnSelectedCommand}"
                                     FontSize="14" Padding="20,10" Margin="0,0,12,0"/>
-                            <TextBlock Text="Select devices and APKs, then click Install" 
+                            <TextBlock Grid.Column="1" Text="Select devices and APKs, then click Install" 
                                        Foreground="#666" VerticalAlignment="Center"/>
-                        </StackPanel>
+                        </Grid>
                         
                         <!-- Installation Options -->
-                        <StackPanel Orientation="Horizontal" Margin="0,0,0,16">
-                            <CheckBox Content="Reinstall (-r)" 
+                        <Grid Margin="0,0,0,16">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="Auto"/>
+                                <ColumnDefinition Width="Auto"/>
+                                <ColumnDefinition Width="Auto"/>
+                                <ColumnDefinition Width="*"/>
+                            </Grid.ColumnDefinitions>
+                            <CheckBox Grid.Column="0" Content="Reinstall (-r)" 
                                       IsChecked="{Binding OptReinstall}" 
                                       Margin="0,0,16,0" VerticalAlignment="Center"/>
-                            <CheckBox Content="Grant Permissions (-g)" 
+                            <CheckBox Grid.Column="1" Content="Grant Permissions (-g)" 
                                       IsChecked="{Binding OptGrantPerms}" 
                                       Margin="0,0,16,0" VerticalAlignment="Center"/>
-                            <CheckBox Content="Allow Downgrade (-d)" 
+                            <CheckBox Grid.Column="2" Content="Allow Downgrade (-d)" 
                                       IsChecked="{Binding OptDowngrade}"
                                       Margin="0,0,16,0" VerticalAlignment="Center"/>
-                        </StackPanel>
+                        </Grid>
                         
                         <!-- Queue Status -->
                         <Border Background="White" CornerRadius="8" Padding="16" Margin="0,0,0,16">
@@ -358,18 +537,23 @@
                                         <ColumnDefinition Width="*"/>
                                         <ColumnDefinition Width="*"/>
                                         <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="*"/>
                                     </Grid.ColumnDefinitions>
                                     <StackPanel Grid.Column="0" HorizontalAlignment="Center">
                                         <TextBlock Text="{Binding Devices.Count, FallbackValue=0}" FontSize="24" FontWeight="Bold" Foreground="#2196F3"/>
-                                        <TextBlock Text="Devices" Foreground="#666"/>
+                                        <TextBlock Text="Total Devices" Foreground="#666"/>
                                     </StackPanel>
                                     <StackPanel Grid.Column="1" HorizontalAlignment="Center">
                                         <TextBlock Text="{Binding ApkFiles.Count, FallbackValue=0}" FontSize="24" FontWeight="Bold" Foreground="#4CAF50"/>
-                                        <TextBlock Text="APKs" Foreground="#666"/>
+                                        <TextBlock Text="Total APKs" Foreground="#666"/>
                                     </StackPanel>
                                     <StackPanel Grid.Column="2" HorizontalAlignment="Center">
-                                        <TextBlock Text="Ready" FontSize="24" FontWeight="Bold" Foreground="#FF9800"/>
-                                        <TextBlock Text="Status" Foreground="#666"/>
+                                        <TextBlock Text="{Binding SelectedDevicesCount, FallbackValue=0}" FontSize="24" FontWeight="Bold" Foreground="#1976D2"/>
+                                        <TextBlock Text="Selected Devices" Foreground="#666"/>
+                                    </StackPanel>
+                                    <StackPanel Grid.Column="3" HorizontalAlignment="Center">
+                                        <TextBlock Text="{Binding SelectedApksCount, FallbackValue=0}" FontSize="24" FontWeight="Bold" Foreground="#2E7D32"/>
+                                        <TextBlock Text="Selected APKs" Foreground="#666"/>
                                     </StackPanel>
                                 </Grid>
                             </StackPanel>
@@ -408,8 +592,8 @@
                                 
                                 <Grid Margin="0,0,0,16">
                                     <Grid.ColumnDefinitions>
-                                        <ColumnDefinition Width="200"/>
-                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="200" MinWidth="150" MaxWidth="300"/>
+                                        <ColumnDefinition Width="*" MinWidth="200"/>
                                     </Grid.ColumnDefinitions>
                                     <Grid.RowDefinitions>
                                         <RowDefinition Height="Auto"/>
@@ -418,27 +602,37 @@
                                     </Grid.RowDefinitions>
                                     
                                     <TextBlock Grid.Row="0" Grid.Column="0" Text="APK Repository:" VerticalAlignment="Center"/>
-                                    <StackPanel Grid.Row="0" Grid.Column="1" Orientation="Horizontal">
-                                                                            <TextBox Text="{Binding ApkRepoPath, FallbackValue='No folder selected'}" 
-                                             Style="{StaticResource ModernTextBoxStyle}"
-                                             Width="300" Margin="0,0,8,0"/>
-                                        <Button Content="Browse" 
+                                    <Grid Grid.Row="0" Grid.Column="1">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="*" MinWidth="200"/>
+                                            <ColumnDefinition Width="Auto"/>
+                                        </Grid.ColumnDefinitions>
+                                        <TextBox Grid.Column="0" Text="{Binding ApkRepoPath, FallbackValue='No folder selected'}" 
+                                                 Style="{StaticResource ModernTextBoxStyle}"
+                                                 Margin="0,0,8,0"/>
+                                        <Button Grid.Column="1" Content="Browse" 
                                                 Style="{StaticResource ModernButtonStyle}"
                                                 Command="{Binding ChooseRepoCommand}"/>
-                                    </StackPanel>
+                                    </Grid>
                                     
                                     <TextBlock Grid.Row="1" Grid.Column="0" Text="Installation Options:" VerticalAlignment="Center" Margin="0,16,0,0"/>
-                                    <StackPanel Grid.Row="1" Grid.Column="1" Orientation="Horizontal" Margin="0,16,0,0">
-                                        <CheckBox Content="Reinstall (-r)" 
+                                    <Grid Grid.Row="1" Grid.Column="1" Margin="0,16,0,0">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="Auto"/>
+                                            <ColumnDefinition Width="Auto"/>
+                                            <ColumnDefinition Width="Auto"/>
+                                            <ColumnDefinition Width="*"/>
+                                        </Grid.ColumnDefinitions>
+                                        <CheckBox Grid.Column="0" Content="Reinstall (-r)" 
                                                   IsChecked="{Binding OptReinstall}" 
                                                   Margin="0,0,16,0" VerticalAlignment="Center"/>
-                                        <CheckBox Content="Grant Permissions (-g)" 
+                                        <CheckBox Grid.Column="1" Content="Grant Permissions (-g)" 
                                                   IsChecked="{Binding OptGrantPerms}" 
                                                   Margin="0,0,16,0" VerticalAlignment="Center"/>
-                                        <CheckBox Content="Allow Downgrade (-d)" 
+                                        <CheckBox Grid.Column="2" Content="Allow Downgrade (-d)" 
                                                   IsChecked="{Binding OptDowngrade}"
                                                   Margin="0,0,16,0" VerticalAlignment="Center"/>
-                                    </StackPanel>
+                                    </Grid>
                                     
                                     <TextBlock Grid.Row="2" Grid.Column="0" Text="Actions:" VerticalAlignment="Center" Margin="0,16,0,0"/>
                                     <StackPanel Grid.Row="2" Grid.Column="1" Orientation="Horizontal" Margin="0,16,0,0">
@@ -475,7 +669,7 @@
                 </Grid.ColumnDefinitions>
                 
                 <TextBlock Grid.Column="0" 
-                           Text="Ready" 
+                           Text="{Binding StatusBarText, FallbackValue='Ready'}" 
                            VerticalAlignment="Center" 
                            Foreground="#666"/>
                 

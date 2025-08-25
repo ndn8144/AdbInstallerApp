@@ -3,9 +3,16 @@
 <TargetFramework>net8.0-windows</TargetFramework>
 <OutputType>WinExe</OutputType>
 <UseWPF>true</UseWPF>
+<ApplicationIcon>Assets\Icons\app.ico</ApplicationIcon>
 <Nullable>enable</Nullable>
 <ImplicitUsings>enable</ImplicitUsings>
-<AssemblyName>AdbInstallerApp</AssemblyName>
+<AssemblyTitle>ADB Installer App</AssemblyTitle>
+<AssemblyDescription>Professional APK Management and Installation</AssemblyDescription>
+<AssemblyCompany>Your Company</AssemblyCompany>
+<AssemblyProduct>ADB Installer App</AssemblyProduct>
+<AssemblyCopyright>Copyright © 2025</AssemblyCopyright>
+<AssemblyVersion>1.0.0</AssemblyVersion>
+<FileVersion>1.0.0</FileVersion>
 </PropertyGroup>
 
 
@@ -14,6 +21,17 @@
 <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
 </Content>
 </ItemGroup>
+
+  <ItemGroup>
+    <!-- Copy font files to output directory -->
+    <None Include="Assets\Fonts\*.ttf">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+    <None Include="Assets\Icons\*.png">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+  </ItemGroup>
+
 
 
 <ItemGroup>

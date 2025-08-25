@@ -4,9 +4,14 @@ xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
 StartupUri="Views/MainWindow.xaml"
 DispatcherUnhandledException="Application_DispatcherUnhandledException">
 <Application.Resources>
+    <!-- App icon resource -->
+    <Image x:Key="AppIcon" Source="Assets/Icons/android.png"/>
+    <!-- Font Resources -->
+    <FontFamily x:Key="RobotoFont">./Assets/Fonts/Roboto-Regular.ttf#RobotoRegular</FontFamily>
+    <FontFamily x:Key="RobotoLightFont">./Assets/Fonts/Roboto-VariableFont.ttf#RobotoLight</FontFamily>
     <!-- Modern Color Palette -->
-    <SolidColorBrush x:Key="PrimaryBrush" Color="#2196F3"/>
-    <SolidColorBrush x:Key="PrimaryDarkBrush" Color="#1976D2"/>
+    <SolidColorBrush x:Key="PrimaryBrush" Color="#667eea"/>
+    <SolidColorBrush x:Key="PrimaryDarkBrush" Color="#764ba2"/>
     <SolidColorBrush x:Key="AccentBrush" Color="#FF5722"/>
     <SolidColorBrush x:Key="BackgroundBrush" Color="#FAFAFA"/>
     <SolidColorBrush x:Key="SurfaceBrush" Color="#FFFFFF"/>
@@ -15,7 +20,11 @@ DispatcherUnhandledException="Application_DispatcherUnhandledException">
     <SolidColorBrush x:Key="DividerBrush" Color="#E0E0E0"/>
     <SolidColorBrush x:Key="SuccessBrush" Color="#4CAF50"/>
     <SolidColorBrush x:Key="ErrorBrush" Color="#F44336"/>
-
+    <SolidColorBrush x:Key="DeviceSelectionColor" Color="#764ba2"/>
+    <SolidColorBrush x:Key="DeviceHoverColor" Color="#F0F0F0"/>
+    <SolidColorBrush x:Key="DeviceBorderColor" Color="#E0E0E0"/>
+    <SolidColorBrush x:Key="DeviceHeaderColor" Color="#F8F9FA"/>
+    <SolidColorBrush x:Key="DeviceAlternateColor" Color="#F8F9FA"/>
     <!-- Modern Button Style -->
     <Style x:Key="ModernButtonStyle" TargetType="Button">
         <Setter Property="Background" Value="{StaticResource PrimaryBrush}"/>
@@ -101,15 +110,17 @@ DispatcherUnhandledException="Application_DispatcherUnhandledException">
         
         <!-- Modern DataGrid Header Style -->
         <Style x:Key="ModernDataGridHeaderStyle" TargetType="DataGridColumnHeader">
-            <Setter Property="Background" Value="#F8F9FA"/>
+            <Setter Property="Background" Value="{StaticResource DeviceHeaderColor}"/>
             <Setter Property="Foreground" Value="#333"/>
             <Setter Property="FontWeight" Value="SemiBold"/>
-            <Setter Property="FontSize" Value="16"/>
-            <Setter Property="Padding" Value="16,12"/>
-            <Setter Property="BorderThickness" Value="0,0,0,2"/>
-            <Setter Property="BorderBrush" Value="#E0E0E0"/>
-            <Setter Property="HorizontalContentAlignment" Value="Left"/>
+            <Setter Property="FontSize" Value="14"/>
+            <Setter Property="FontFamily" Value="Segoe UI"/>
+            <Setter Property="Padding" Value="12,10"/>
+            <Setter Property="BorderThickness" Value="0,0,1,1"/>
+            <Setter Property="BorderBrush" Value="{StaticResource DeviceBorderColor}"/>
+            <Setter Property="HorizontalContentAlignment" Value="Center"/>
             <Setter Property="VerticalContentAlignment" Value="Center"/>
+            <!-- <Setter Property="Height" Value="45"/> -->
             <Setter Property="Template">
                 <Setter.Value>
                     <ControlTemplate TargetType="DataGridColumnHeader">
@@ -125,18 +136,18 @@ DispatcherUnhandledException="Application_DispatcherUnhandledException">
             </Setter>
         </Style>
         
-        <!-- Modern DataGrid Row Style -->
+        <!-- Modern DataGrid Row Style - Xử lý background chính -->
         <Style x:Key="ModernDataGridRowStyle" TargetType="DataGridRow">
             <Setter Property="Background" Value="Transparent"/>
             <Setter Property="BorderThickness" Value="0"/>
-            <Setter Property="Margin" Value="0,2"/>
+            <Setter Property="Margin" Value="0,1"/>
             <Setter Property="Template">
                 <Setter.Value>
                     <ControlTemplate TargetType="DataGridRow">
                         <Border Background="{TemplateBinding Background}" 
                                 BorderBrush="{TemplateBinding BorderBrush}"
                                 BorderThickness="{TemplateBinding BorderThickness}"
-                                CornerRadius="8"
+                                CornerRadius="6"
                                 Margin="{TemplateBinding Margin}">
                             <SelectiveScrollingGrid>
                                 <SelectiveScrollingGrid.ColumnDefinitions>
@@ -149,12 +160,53 @@ DispatcherUnhandledException="Application_DispatcherUnhandledException">
                             </SelectiveScrollingGrid>
                         </Border>
                         <ControlTemplate.Triggers>
+                            <!-- SELECTED: Purple background cho toàn bộ row -->
                             <Trigger Property="IsSelected" Value="True">
-                                <Setter Property="Background" Value="#E3F2FD"/>
-                                <Setter Property="BorderBrush" Value="#2196F3"/>
+                                <Setter Property="Background" Value="{StaticResource DeviceSelectionColor}"/>
+                                <Setter Property="Foreground" Value="White"/>
+                                <Setter Property="BorderBrush" Value="{StaticResource DeviceSelectionColor}"/>
                             </Trigger>
+                            <!-- HOVER: Light gray background -->
                             <Trigger Property="IsMouseOver" Value="True">
-                                <Setter Property="Background" Value="#F5F5F5"/>
+                                <Setter Property="Background" Value="{StaticResource DeviceHoverColor}"/>
+                            </Trigger>
+                            <!-- MultiTrigger for selected and hovered -->
+                            <MultiTrigger>
+                                <MultiTrigger.Conditions>
+                                    <Condition Property="IsSelected" Value="True"/>
+                                    <Condition Property="IsMouseOver" Value="True"/>
+                                </MultiTrigger.Conditions>
+                                <Setter Property="Background" Value="#8A5AA8"/>
+                                <Setter Property="Foreground" Value="White"/>
+                            </MultiTrigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+        
+        <!-- Modern DataGrid Cell Style - Không có IsSelected trigger -->
+        <Style x:Key="ModernDataGridCellStyle" TargetType="DataGridCell">
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="FontSize" Value="13"/>
+            <Setter Property="FontFamily" Value="Segoe UI"/>
+            <Setter Property="Foreground" Value="#333"/>
+            <Setter Property="VerticalAlignment" Value="Center"/>
+            <Setter Property="HorizontalAlignment" Value="Center"/>
+            <Setter Property="Padding" Value="8,6"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="DataGridCell">
+                        <Border Background="{TemplateBinding Background}" 
+                                BorderThickness="0"
+                                Padding="{TemplateBinding Padding}">
+                            <ContentPresenter VerticalAlignment="Center" HorizontalAlignment="Left"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <!-- Xóa trigger IsSelected - để row style xử lý -->
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter Property="Background" Value="#F0F0F0"/>
                             </Trigger>
                         </ControlTemplate.Triggers>
                     </ControlTemplate>
@@ -162,40 +214,32 @@ DispatcherUnhandledException="Application_DispatcherUnhandledException">
             </Setter>
         </Style>
         
-        <!-- Modern DataGrid Cell Style -->
-        <Style x:Key="ModernDataGridCellStyle" TargetType="TextBlock">
-            <Setter Property="FontSize" Value="16"/>
-            <Setter Property="FontFamily" Value="Segoe UI"/>
-            <Setter Property="Foreground" Value="#333"/>
-            <Setter Property="VerticalAlignment" Value="Center"/>
-            <Setter Property="Padding" Value="16,8"/>
-            <Setter Property="TextTrimming" Value="CharacterEllipsis"/>
-        </Style>
-        
-        <!-- Modern CheckBox Style for DataGrid -->
+        <!-- Modern CheckBox Style for DataGrid - Đồng bộ background -->
         <Style x:Key="ModernDataGridCheckBoxStyle" TargetType="CheckBox">
-            <Setter Property="FontSize" Value="18"/>
+            <Setter Property="FontSize" Value="16"/>
             <Setter Property="HorizontalAlignment" Value="Center"/>
             <Setter Property="VerticalAlignment" Value="Center"/>
             <Setter Property="Margin" Value="8"/>
             <Setter Property="Template">
                 <Setter.Value>
                     <ControlTemplate TargetType="CheckBox">
-                        <Border Background="White" 
-                                BorderBrush="#E0E0E0" 
+                        <Border Background="{TemplateBinding Background}" 
+                                BorderBrush="{StaticResource DeviceBorderColor}" 
                                 BorderThickness="2" 
                                 CornerRadius="4"
-                                Width="24" Height="24">
+                                Width="20" Height="20">
                             <Path x:Name="CheckMark" 
                                   Data="M9,20.42L2.79,14.21L5.62,11.38L9,14.77L18.88,4.88L21.71,7.71L9,20.42Z" 
+                                  Stroke="White" 
+                                  StrokeThickness="2.5" 
                                   Fill="White" 
                                   Stretch="Uniform" 
-                                  Margin="4"
+                                  Margin="3"
                                   Opacity="0"/>
                         </Border>
                         <ControlTemplate.Triggers>
                             <Trigger Property="IsChecked" Value="True">
-                                <Setter Property="Fill" Value="#2196F3" TargetName="CheckMark"/>
+                                <Setter Property="Fill" Value="White" TargetName="CheckMark"/>
                                 <Setter Property="Opacity" Value="1" TargetName="CheckMark"/>
                             </Trigger>
                             <Trigger Property="IsMouseOver" Value="True">
