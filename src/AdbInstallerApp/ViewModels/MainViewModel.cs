@@ -104,6 +104,12 @@ namespace AdbInstallerApp.ViewModels
                 LoadApkGroups();
                 AppendLog("✅ APK repository indexed");
 
+                AppendLog($"📊 Loaded {ApkGroups.Count} groups");
+                foreach (var group in ApkGroups)
+                {
+                    AppendLog($"  - Group: {group.Name} with {group.ApkItems.Count} APKs");
+                }
+
                 _ = _adb.StartServerAsync();
                 AppendLog("🚀 ADB server starting...");
                 AppendLog("📱 Ready! Connect your Android devices and select APK files to install.");
@@ -283,8 +289,8 @@ namespace AdbInstallerApp.ViewModels
                             OnPropertyChanged(nameof(SplitApkCount));
                             OnPropertyChanged(nameof(ApkClassificationText));
                             OnPropertyChanged(nameof(SelectedDevicesCount));
-                            OnPropertyChanged(nameof(SelectedDevicesCountText));
                             OnPropertyChanged(nameof(SelectedApksCount));
+                            OnPropertyChanged(nameof(SelectedDevicesCountText));
                             OnPropertyChanged(nameof(SelectedApksCountText));
                             OnPropertyChanged(nameof(StatusBarText));
                         }
@@ -301,41 +307,41 @@ namespace AdbInstallerApp.ViewModels
             }
         }
 
-        // APK Group Management
-        [RelayCommand]
-        private void CreateGroup()
-        {
-            if (string.IsNullOrWhiteSpace(NewGroupName))
-            {
-                MessageBox.Show("Please enter a group name.", "Create Group", MessageBoxButton.OK, MessageBoxImage.Warning);
-                return;
-            }
+        // // APK Group Management
+        // [RelayCommand]
+        // private void CreateGroup()
+        // {
+        //     if (string.IsNullOrWhiteSpace(NewGroupName))
+        //     {
+        //         MessageBox.Show("Please enter a group name.", "Create Group", MessageBoxButton.OK, MessageBoxImage.Warning);
+        //         return;
+        //     }
             
-            if (ApkGroups.Any(g => g.Name.Equals(NewGroupName.Trim(), StringComparison.OrdinalIgnoreCase)))
-            {
-                MessageBox.Show("A group with this name already exists.", "Create Group", MessageBoxButton.OK, MessageBoxImage.Warning);
-                return;
-            }
+        //     if (ApkGroups.Any(g => g.Name.Equals(NewGroupName.Trim(), StringComparison.OrdinalIgnoreCase)))
+        //     {
+        //         MessageBox.Show("A group with this name already exists.", "Create Group", MessageBoxButton.OK, MessageBoxImage.Warning);
+        //         return;
+        //     }
             
-            try
-            {
-                var group = new ApkGroup(NewGroupName.Trim(), NewGroupDescription.Trim());
-                var groupViewModel = new ApkGroupViewModel(group);
-                ApkGroups.Add(groupViewModel);
+        //     try
+        //     {
+        //         var group = new ApkGroup(NewGroupName.Trim(), NewGroupDescription.Trim());
+        //         var groupViewModel = new ApkGroupViewModel(group);
+        //         ApkGroups.Add(groupViewModel);
                 
-                NewGroupName = string.Empty;
-                NewGroupDescription = string.Empty;
+        //         NewGroupName = string.Empty;
+        //         NewGroupDescription = string.Empty;
                 
-                AppendLog($"✅ Created group: {group.Name}");
-                RefreshComputedProperties();
-                SaveApkGroups();
-            }
-            catch (Exception ex)
-            {
-                AppendLog($"❌ Error creating group: {ex.Message}");
-                MessageBox.Show($"Error creating group: {ex.Message}", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
-            }
-        }
+        //         AppendLog($"✅ Created group: {group.Name}");
+        //         RefreshComputedProperties();
+        //         SaveApkGroups();
+        //     }
+        //     catch (Exception ex)
+        //     {
+        //         AppendLog($"❌ Error creating group: {ex.Message}");
+        //         MessageBox.Show($"Error creating group: {ex.Message}", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
+        //     }
+        // }
         
         [RelayCommand]
         private void DeleteGroup(ApkGroupViewModel? group)
@@ -604,7 +610,7 @@ namespace AdbInstallerApp.ViewModels
             return selectedApks.Distinct().ToList();
         }
 
-        private void AppendLog(string line)
+        public void AppendLog(string line)
         {
             LogText += (string.IsNullOrEmpty(LogText) ? string.Empty : "\r\n") + line;
         }
@@ -625,6 +631,8 @@ namespace AdbInstallerApp.ViewModels
             try
             {
                 var groupsPath = GetGroupsFilePath();
+                AppendLog($"🔍 Loading groups from: {groupsPath}");
+                
                 if (File.Exists(groupsPath))
                 {
                     var json = File.ReadAllText(groupsPath);
@@ -637,10 +645,39 @@ namespace AdbInstallerApp.ViewModels
                         {
                             var groupViewModel = new ApkGroupViewModel(group);
                             ApkGroups.Add(groupViewModel);
+                            AppendLog($"  ✅ Loaded group: {group.Name} with {group.ApkItems?.Count ?? 0} APKs");
                         }
                         AppendLog($"✅ Loaded {groups.Count} APK group(s)");
+                        
+                        // Auto-switch to groups view if groups exist
+                        if (groups.Count > 0 && CurrentModule == "ApkFiles")
+                        {
+                            ShowGroupsView = true;
+                            OnPropertyChanged(nameof(ShowGroupsView));
+                            AppendLog("🔄 Auto-switched to Groups View");
+                        }
+                    }
+                    else
+                    {
+                        AppendLog("⚠️ Groups file exists but deserialization returned null");
                     }
                 }
+                else
+                {
+                    AppendLog("⚠️ Groups file not found, starting with empty groups");
+                }
+                
+                // Debug: Log trạng thái hiện tại
+                AppendLog($" Current state: {ApkGroups.Count} groups in collection");
+                
+                // Force UI update đầy đủ
+                OnPropertyChanged(nameof(ApkGroups));
+                OnPropertyChanged(nameof(ShowGroupsView));
+                OnPropertyChanged(nameof(ApkGroupsCountText));
+                OnPropertyChanged(nameof(StatusBarText));
+                
+                // Force refresh computed properties
+                RefreshComputedProperties();
             }
             catch (Exception ex)
             {
@@ -682,7 +719,31 @@ namespace AdbInstallerApp.ViewModels
         private void NavigateToDevices() => CurrentModule = "Devices";
         
         [RelayCommand]
-        private void NavigateToApkFiles() => CurrentModule = "ApkFiles";
+        private void NavigateToApkFiles() 
+        {
+            CurrentModule = "ApkFiles";
+            
+            // Đảm bảo groups view được hiển thị nếu có groups
+            if (ApkGroups.Count > 0)
+            {
+                ShowGroupsView = true;
+                AppendLog($"📋 Switched to APK Files with {ApkGroups.Count} groups");
+            }
+            else
+            {
+                ShowGroupsView = false;
+                AppendLog("📋 Switched to APK Files (no groups yet)");
+            }
+            
+            // Force UI update đầy đủ
+            OnPropertyChanged(nameof(ShowGroupsView));
+            OnPropertyChanged(nameof(ApkGroups));
+            OnPropertyChanged(nameof(ApkGroupsCountText));
+            OnPropertyChanged(nameof(StatusBarText));
+            
+            // Force refresh computed properties
+            RefreshComputedProperties();
+        }
         
         [RelayCommand]
         private void NavigateToInstallQueue() => CurrentModule = "InstallQueue";
@@ -752,6 +813,71 @@ namespace AdbInstallerApp.ViewModels
                 OptDowngrade = defaultSettings.Downgrade;
                 AppendLog("[INFO] Settings reset to defaults");
             }
+        }
+
+        [ObservableProperty]
+        private bool _showCreateGroupDialog = false;
+
+        [ObservableProperty]
+        private CreateGroupDialogModel _createGroupDialog = new();
+
+        [RelayCommand]
+        private void OpenCreateGroupDialog()
+        {
+            CreateGroupDialog.Reset();
+            ShowCreateGroupDialog = true;
+        }
+
+        [RelayCommand]
+        private void CreateGroup()
+        {
+            if (string.IsNullOrWhiteSpace(NewGroupName))
+            {
+                MessageBox.Show("Please enter a group name.", "Create Group", MessageBoxButton.OK, MessageBoxImage.Warning);
+                return;
+            }
+            
+            if (ApkGroups.Any(g => g.Name.Equals(NewGroupName.Trim(), StringComparison.OrdinalIgnoreCase)))
+            {
+                MessageBox.Show("A group with this name already exists.", "Create Group", MessageBoxButton.OK, MessageBoxImage.Warning);
+                return;
+            }
+            
+            try
+            {
+                var group = new ApkGroup(NewGroupName.Trim(), NewGroupDescription.Trim());
+                var groupViewModel = new ApkGroupViewModel(group);
+                ApkGroups.Add(groupViewModel);
+                
+                NewGroupName = string.Empty;
+                NewGroupDescription = string.Empty;
+                
+                AppendLog($"✅ Created group: {group.Name}");
+                
+                // Force UI updates
+                OnPropertyChanged(nameof(ApkGroups));
+                OnPropertyChanged(nameof(ApkGroupsCountText));
+                OnPropertyChanged(nameof(StatusBarText));
+                
+                // Auto-switch to groups view
+                ShowGroupsView = true;
+                OnPropertyChanged(nameof(ShowGroupsView));
+                
+                RefreshComputedProperties();
+                SaveApkGroups();
+            }
+            catch (Exception ex)
+            {
+                AppendLog($"❌ Error creating group: {ex.Message}");
+                MessageBox.Show($"Error creating group: {ex.Message}", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
+            }
+        }
+
+
+        [RelayCommand]
+        private void CancelCreateGroup()
+        {
+            ShowCreateGroupDialog = false;
         }
     }
 }

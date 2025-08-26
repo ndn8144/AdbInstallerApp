@@ -348,7 +348,7 @@ DispatcherUnhandledException="Application_DispatcherUnhandledException">
     <Style x:Key="ModernTextBoxStyle" TargetType="TextBox">
         <Setter Property="BorderBrush" Value="{StaticResource DividerBrush}"/>
         <Setter Property="BorderThickness" Value="1"/>
-        <Setter Property="Padding" Value="12,8"/>
+        <Setter Property="Padding" Value="10,8"/>
         <Setter Property="Background" Value="{StaticResource SurfaceBrush}"/>
         <Setter Property="Template">
             <Setter.Value>

@@ -6,6 +6,8 @@ using System.Windows.Input;
 using System.Linq;
 using System.Collections.Generic;
 using System.Windows.Media;
+using CommunityToolkit.Mvvm.ComponentModel;
+using AdbInstallerApp.Models;
 
 namespace AdbInstallerApp.Views
 {
@@ -467,6 +469,64 @@ namespace AdbInstallerApp.Views
             // This would require additional property binding in the ViewModel
             // For now, we'll just mark it as a placeholder for future implementation
             // group.IsVisible = visible;
+        }
+
+        private void OpenCreateGroupDialog()
+        {
+            try
+            {
+                var dialog = new CreateGroupDialog();
+                var result = dialog.ShowDialog();
+                
+                if (result == true && dialog.DataContext is CreateGroupDialogModel dialogModel)
+                {
+                    // Gọi command từ ViewModel thay vì xử lý trực tiếp
+                    if (DataContext is MainViewModel viewModel)
+                    {
+                        viewModel.NewGroupName = dialogModel.GroupName.Trim();
+                        viewModel.NewGroupDescription = dialogModel.Description.Trim();
+                        viewModel.CreateGroupCommand.Execute(null);
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                // Thay vì gọi AppendLog, sử dụng MessageBox trực tiếp
+                MessageBox.Show($"Error opening dialog: {ex.Message}", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
+            }
+        }  
+        private void NewGroupButton_Click(object sender, RoutedEventArgs e)
+        {
+            try
+            {
+                // Debug: Log trạng thái hiện tại
+                if (DataContext is MainViewModel mainViewModel)
+                {
+                    System.Diagnostics.Debug.WriteLine($"Debug: ShowGroupsView = {mainViewModel.ShowGroupsView}");
+                    System.Diagnostics.Debug.WriteLine($"Debug: ApkGroups.Count = {mainViewModel.ApkGroups.Count}");
+                    System.Diagnostics.Debug.WriteLine($"Debug: CurrentModule = {mainViewModel.CurrentModule}");
+                }
+                
+                var dialog = new CreateGroupDialog();
+                var result = dialog.ShowDialog();
+                
+                if (result == true && dialog.DataContext is CreateGroupDialogModel dialogModel)
+                {
+                    if (DataContext is MainViewModel viewModel)
+                    {
+                        viewModel.NewGroupName = dialogModel.GroupName.Trim();
+                        viewModel.NewGroupDescription = dialogModel.Description.Trim();
+                        viewModel.CreateGroupCommand.Execute(null);
+                        
+                        // Debug: Log sau khi tạo group
+                        System.Diagnostics.Debug.WriteLine($"Debug: After creating group - ApkGroups.Count = {viewModel.ApkGroups.Count}");
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Error opening dialog: {ex.Message}", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
+            }
         }
     }
 }

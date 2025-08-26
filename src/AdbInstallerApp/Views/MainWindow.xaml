@@ -429,7 +429,7 @@
                 <ColumnDefinition Width="Auto"/>
                 <ColumnDefinition Width="Auto"/>
                 <ColumnDefinition Width="Auto"/>
-                <ColumnDefinition Width="150"/>
+                <ColumnDefinition Width="Auto"/>
             </Grid.ColumnDefinitions>
             
             <!-- Choose Repository Button -->
@@ -446,14 +446,21 @@
                      VerticalAlignment="Center"
                      Margin="0,0,6,6"
                      FontSize="13" Padding="8,5"/>
-            
+
+            <!-- Create Group Button (only visible in groups view) -->
+            <Button Grid.Column="2" Content="➕ New Group" 
+                    Style="{StaticResource AccentButtonStyle}"
+                    Click="NewGroupButton_Click"
+                    FontSize="13" Padding="8,5" Margin="0,0,6,6"
+                    Visibility="{Binding ShowGroupsView, Converter={StaticResource BooleanToVisibilityConverter}}"/>
+
             <!-- View Toggle Button -->
-            <ToggleButton Grid.Column="2" 
+            <ToggleButton Grid.Column="3" 
                           IsChecked="{Binding ShowGroupsView}"
                           Style="{StaticResource ModernToggleButtonStyle}"
                           FontSize="13" Padding="8,5" Margin="0,0,6,6">
                 <ToggleButton.Content>
-                    <TextBlock Text="{Binding ShowGroupsView, FallbackValue='📋 List View'}">
+                    <TextBlock>
                         <TextBlock.Style>
                             <Style TargetType="TextBlock">
                                 <Setter Property="Text" Value="📋 List View"/>
@@ -469,35 +476,26 @@
             </ToggleButton>
             
             <!-- Select All Button -->
-            <Button Grid.Column="3" Content="☑️ Select All" 
+            <Button Grid.Column="4" Content="☑️ Select All" 
                     Style="{StaticResource ModernButtonStyle}"
                     Command="{Binding SelectAllApksCommand}"
                     FontSize="13" Padding="8,5" Margin="0,0,6,6"/>
             
             <!-- Clear Selection Button -->
-            <Button Grid.Column="4" Content="❌ Clear All" 
+            <Button Grid.Column="5" Content="❌ Clear All" 
                     Style="{StaticResource ModernButtonStyle}"
                     Command="{Binding ClearApkSelectionCommand}"
                     FontSize="13" Padding="8,5" Margin="0,0,6,6"/>
             
-            <!-- Create Group Button (only visible in groups view) -->
-            <Button Grid.Column="5" Content="➕ New Group" 
-                    Style="{StaticResource AccentButtonStyle}"
-                    Command="{Binding CreateGroupCommand}"
-                    FontSize="13" Padding="8,5" Margin="0,0,6,6"
-                    Visibility="{Binding ShowGroupsView, Converter={StaticResource BooleanToVisibilityConverter}}"/>
-            
             <!-- Selection Count Badge -->
-            <Border Grid.Column="6" Background="#E8F5E8" CornerRadius="8" Padding="8,5" 
+            <Border Grid.Column="6" Background="#E8F5E8" CornerRadius="8" Padding="8,5"
                     VerticalAlignment="Center" Margin="0,0,6,6">
                 <TextBlock Text="{Binding SelectedApksCountText, FallbackValue='No APK selected'}" 
-                           Foreground="#2E7D32" FontSize="12" FontWeight="Medium"/>
+                           Foreground="#2E7D32" FontSize="13" FontWeight="Medium"/>
             </Border>
         </Grid>
 
-        <!-- Search and Create Group Panel -->
-        <Border Background="White" CornerRadius="8" Padding="16" Margin="0,0,0,12"
-                Effect="{StaticResource CardShadow}">
+        <Border Background="White" CornerRadius="8" Padding="12" Margin="0,0,0,12">
             <StackPanel>
                 <!-- Search Panel (always visible) -->
                 <Grid Margin="0,0,0,12">
@@ -507,7 +505,12 @@
                         <ColumnDefinition Width="Auto"/>
                     </Grid.ColumnDefinitions>
                     
-                    <TextBlock Grid.Column="0" Text="🔍 Search:" VerticalAlignment="Center" Margin="0,0,8,0"/>
+                    <TextBlock Grid.Column="0" 
+                        Text="🔍 Search:" 
+                        VerticalAlignment="Center" 
+                        Margin="0,0,8,0"
+                        FontSize="14"
+                    />
                     <TextBox Grid.Column="1" x:Name="SearchTextBox"
                              Style="{StaticResource ModernTextBoxStyle}"
                              TextChanged="SearchTextBox_TextChanged"
@@ -515,11 +518,11 @@
                              ToolTip="Search APKs and groups"/>
                     
                     <TextBlock Grid.Column="2" Text="Ctrl+G: Toggle view | Ctrl+A: Select all | F5: Refresh" 
-                               FontSize="10" Foreground="#999" VerticalAlignment="Center"/>
+                               FontSize="14" Foreground="#999" VerticalAlignment="Center"/>
                 </Grid>
                 
                 <!-- Create Group Panel (only visible when ShowGroupsView is true) -->
-                <Grid Visibility="{Binding ShowGroupsView, Converter={StaticResource BooleanToVisibilityConverter}}">
+                <!-- <Grid Visibility="{Binding ShowGroupsView, Converter={StaticResource BooleanToVisibilityConverter}}">
                     <Grid.RowDefinitions>
                         <RowDefinition Height="Auto"/>
                         <RowDefinition Height="Auto"/>
@@ -557,7 +560,7 @@
                                     IsEnabled="{Binding NewGroupName, Converter={StaticResource StringToBooleanConverter}}"/>
                         </Grid>
                     </StackPanel>
-                </Grid>
+                </Grid> -->
             </StackPanel>
         </Border>
 
@@ -717,9 +720,10 @@
             </DataGrid>
 
             <!-- Groups View (TreeView) -->
-            <ScrollViewer VerticalScrollBarVisibility="Auto" 
-                          MaxHeight="400"
-                          Visibility="{Binding ShowGroupsView, Converter={StaticResource BooleanToVisibilityConverter}}">
+        <ScrollViewer VerticalScrollBarVisibility="Auto" 
+                    MaxHeight="400"
+                    Visibility="{Binding ShowGroupsView, Converter={StaticResource BooleanToVisibilityConverter}}">
+
                 <StackPanel>
                     <!-- Groups List -->
                     <ItemsControl ItemsSource="{Binding ApkGroups}">
@@ -791,7 +795,7 @@
                                             <Button Grid.Column="2" Content="☑️ Select All"
                                                     Style="{StaticResource ModernButtonStyle}"
                                                     Command="{Binding SelectAllApksCommand}"
-                                                    FontSize="12" Padding="8,4"
+                                                    FontSize="12" Padding="8,2"
                                                     Margin="0,0,6,0"
                                                     ToolTip="Select all APKs in this group"/>
                                             
@@ -799,7 +803,7 @@
                                                     Style="{StaticResource AccentButtonStyle}"
                                                     Command="{Binding DataContext.AddSelectedApksToGroupCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
                                                     CommandParameter="{Binding}"
-                                                    FontSize="12" Padding="8,4"
+                                                    FontSize="12" Padding="8,2"
                                                     Margin="0,0,6,0"
                                                     ToolTip="Add selected APKs to this group"/>
                                             
@@ -807,7 +811,7 @@
                                                     Style="{StaticResource ModernButtonStyle}"
                                                     Command="{Binding DataContext.DeleteGroupCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
                                                     CommandParameter="{Binding}"
-                                                    FontSize="12" Padding="8,4"
+                                                    FontSize="12" Padding="8,2"
                                                     Background="#F44336"
                                                     ToolTip="Delete this group (APK files will not be deleted)"/>
                                         </Grid>
@@ -888,23 +892,21 @@
                                         </Border>
                                         
                                         <!-- Empty Group Message -->
-                                        <Border Margin="0,12,0,0"
-                                                Padding="24,12"
-                                                Background="#F5F5F5"
-                                                CornerRadius="4"
-                                                Visibility="{Binding ApkItems.Count, Converter={StaticResource IntToVisibilityConverter}, ConverterParameter=0}">
+                                        <Border Background="White" 
+                                                CornerRadius="8" 
+                                                Padding="32"
+                                                Visibility="{Binding ApkItems.Count, Converter={StaticResource BooleanToVisibilityConverter}, ConverterParameter=Invert}">
                                             <StackPanel HorizontalAlignment="Center">
-                                                <TextBlock Text="📂" FontSize="24" HorizontalAlignment="Center" Margin="0,0,0,8"/>
-                                                <TextBlock Text="No APKs in this group yet"
-                                                           FontSize="12" 
-                                                           FontWeight="SemiBold"
-                                                           Foreground="#999" 
-                                                           HorizontalAlignment="Center"
-                                                           Margin="0,0,0,4"/>
+                                                <TextBlock Text="📁" FontSize="48" HorizontalAlignment="Center" Margin="0,0,0,16"/>
+                                                <TextBlock Text="No APKs in this group yet" 
+                                                        FontSize="16" FontWeight="SemiBold"
+                                                        HorizontalAlignment="Center" 
+                                                        Foreground="#666"
+                                                        Margin="0,0,0,8"/>
                                                 <TextBlock Text="Use 'Add APKs' button or drag &amp; drop APKs here"
-                                                           FontSize="11" 
-                                                           Foreground="#BBB" 
-                                                           HorizontalAlignment="Center"/>
+                                                        FontSize="14" 
+                                                        HorizontalAlignment="Center" 
+                                                        Foreground="#888"/>
                                             </StackPanel>
                                         </Border>
                                     </StackPanel>
@@ -917,18 +919,18 @@
                     <Border Background="White" 
                             CornerRadius="8" 
                             Padding="32"
-                            Visibility="{Binding ApkGroups.Count, Converter={StaticResource IntToVisibilityConverter}, ConverterParameter=0}">
+                            Visibility="{Binding ApkGroups.Count, Converter={StaticResource BooleanToVisibilityConverter}, ConverterParameter=Invert}">
                         <StackPanel HorizontalAlignment="Center">
                             <TextBlock Text="📁" FontSize="48" HorizontalAlignment="Center" Margin="0,0,0,16"/>
                             <TextBlock Text="No groups created yet" 
-                                       FontSize="16" FontWeight="SemiBold"
-                                       HorizontalAlignment="Center" 
-                                       Foreground="#666"
-                                       Margin="0,0,0,8"/>
+                                    FontSize="16" FontWeight="SemiBold"
+                                    HorizontalAlignment="Center" 
+                                    Foreground="#666"
+                                    Margin="0,0,0,8"/>
                             <TextBlock Text="Create your first group to organize your APK files"
-                                       FontSize="14" 
-                                       HorizontalAlignment="Center" 
-                                       Foreground="#888"/>
+                                    FontSize="14" 
+                                    HorizontalAlignment="Center" 
+                                    Foreground="#888"/>
                         </StackPanel>
                     </Border>
                 </StackPanel>
