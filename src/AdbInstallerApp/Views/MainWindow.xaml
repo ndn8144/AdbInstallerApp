@@ -12,6 +12,11 @@
     
     <Window.Resources>
         <converters:ModuleToVisibilityConverter x:Key="ModuleToVisibilityConverter"/>
+        <converters:BooleanToVisibilityConverter x:Key="BooleanToVisibilityConverter"/>
+        <converters:StringToBooleanConverter x:Key="StringToBooleanConverter"/>
+        <converters:IntToVisibilityConverter x:Key="IntToVisibilityConverter"/>
+        <converters:StringToVisibilityConverter x:Key="StringToVisibilityConverter"/>
+        <converters:MultiValueConverter x:Key="MultiValueConverter"/>
     </Window.Resources>
     
     <Window.DataContext>
@@ -393,13 +398,552 @@
                     </StackPanel>
                 </Grid>
                 
-                <!-- APK Files Module -->
-                <Grid x:Name="ApkFilesContent" 
-                      Visibility="{Binding CurrentModule, Converter={StaticResource ModuleToVisibilityConverter}, ConverterParameter='ApkFiles'}">
+                <!-- APK Files Module với Groups Support -->
+<Grid x:Name="ApkFilesContent" 
+      Visibility="{Binding CurrentModule, Converter={StaticResource ModuleToVisibilityConverter}, ConverterParameter='ApkFiles'}">
+    <StackPanel>
+        <!-- Header Section -->
+        <Border CornerRadius="12" Padding="12" Margin="0,0,0,12" 
+                Effect="{StaticResource CardShadow}">
+            <Border.Background>
+                <LinearGradientBrush StartPoint="0,0" EndPoint="1,1">
+                    <GradientStop Color="#764ba2" Offset="0"/>
+                    <GradientStop Color="#667eea" Offset="1"/>
+                </LinearGradientBrush>
+            </Border.Background>
+            <StackPanel>
+                <TextBlock Text="📦 APK Repository" 
+                           FontSize="20" FontWeight="Bold" 
+                           Foreground="White" Margin="0,0,0,8"/>
+                <TextBlock Text="Search and manage your APK files and groups" 
+                           FontSize="12" Foreground="White" Opacity="0.5"/>
+            </StackPanel>
+        </Border>
+
+        <!-- Repository and View Controls -->
+        <Grid Margin="0,0,0,6" Effect="{StaticResource CardShadow}">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="180"/>
+                <ColumnDefinition Width="*"/>
+                <ColumnDefinition Width="Auto"/>
+                <ColumnDefinition Width="Auto"/>
+                <ColumnDefinition Width="Auto"/>
+                <ColumnDefinition Width="Auto"/>
+                <ColumnDefinition Width="150"/>
+            </Grid.ColumnDefinitions>
+            
+            <!-- Choose Repository Button -->
+            <Button Grid.Column="0" Content="📁 Choose Repository" 
+                    Style="{StaticResource ModernButtonStyle}"
+                    Command="{Binding ChooseRepoCommand}"
+                    Margin="4,0,6,6"
+                    FontSize="13" Padding="8,5"/>
+            
+            <!-- Repository Path TextBox -->
+            <TextBox Grid.Column="1" Text="{Binding ApkRepoPath, FallbackValue='No folder selected'}" 
+                     Style="{StaticResource ModernTextBoxStyle}"
+                     IsReadOnly="True" 
+                     VerticalAlignment="Center"
+                     Margin="0,0,6,6"
+                     FontSize="13" Padding="8,5"/>
+            
+            <!-- View Toggle Button -->
+            <ToggleButton Grid.Column="2" 
+                          IsChecked="{Binding ShowGroupsView}"
+                          Style="{StaticResource ModernToggleButtonStyle}"
+                          FontSize="13" Padding="8,5" Margin="0,0,6,6">
+                <ToggleButton.Content>
+                    <TextBlock Text="{Binding ShowGroupsView, FallbackValue='📋 List View'}">
+                        <TextBlock.Style>
+                            <Style TargetType="TextBlock">
+                                <Setter Property="Text" Value="📋 List View"/>
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding ShowGroupsView}" Value="True">
+                                        <Setter Property="Text" Value="🗂️ Groups View"/>
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </TextBlock.Style>
+                    </TextBlock>
+                </ToggleButton.Content>
+            </ToggleButton>
+            
+            <!-- Select All Button -->
+            <Button Grid.Column="3" Content="☑️ Select All" 
+                    Style="{StaticResource ModernButtonStyle}"
+                    Command="{Binding SelectAllApksCommand}"
+                    FontSize="13" Padding="8,5" Margin="0,0,6,6"/>
+            
+            <!-- Clear Selection Button -->
+            <Button Grid.Column="4" Content="❌ Clear All" 
+                    Style="{StaticResource ModernButtonStyle}"
+                    Command="{Binding ClearApkSelectionCommand}"
+                    FontSize="13" Padding="8,5" Margin="0,0,6,6"/>
+            
+            <!-- Create Group Button (only visible in groups view) -->
+            <Button Grid.Column="5" Content="➕ New Group" 
+                    Style="{StaticResource AccentButtonStyle}"
+                    Command="{Binding CreateGroupCommand}"
+                    FontSize="13" Padding="8,5" Margin="0,0,6,6"
+                    Visibility="{Binding ShowGroupsView, Converter={StaticResource BooleanToVisibilityConverter}}"/>
+            
+            <!-- Selection Count Badge -->
+            <Border Grid.Column="6" Background="#E8F5E8" CornerRadius="8" Padding="8,5" 
+                    VerticalAlignment="Center" Margin="0,0,6,6">
+                <TextBlock Text="{Binding SelectedApksCountText, FallbackValue='No APK selected'}" 
+                           Foreground="#2E7D32" FontSize="12" FontWeight="Medium"/>
+            </Border>
+        </Grid>
+
+        <!-- Search and Create Group Panel -->
+        <Border Background="White" CornerRadius="8" Padding="16" Margin="0,0,0,12"
+                Effect="{StaticResource CardShadow}">
+            <StackPanel>
+                <!-- Search Panel (always visible) -->
+                <Grid Margin="0,0,0,12">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto"/>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="Auto"/>
+                    </Grid.ColumnDefinitions>
+                    
+                    <TextBlock Grid.Column="0" Text="🔍 Search:" VerticalAlignment="Center" Margin="0,0,8,0"/>
+                    <TextBox Grid.Column="1" x:Name="SearchTextBox"
+                             Style="{StaticResource ModernTextBoxStyle}"
+                             TextChanged="SearchTextBox_TextChanged"
+                             Margin="0,0,12,0"
+                             ToolTip="Search APKs and groups"/>
+                    
+                    <TextBlock Grid.Column="2" Text="Ctrl+G: Toggle view | Ctrl+A: Select all | F5: Refresh" 
+                               FontSize="10" Foreground="#999" VerticalAlignment="Center"/>
+                </Grid>
+                
+                <!-- Create Group Panel (only visible when ShowGroupsView is true) -->
+                <Grid Visibility="{Binding ShowGroupsView, Converter={StaticResource BooleanToVisibilityConverter}}">
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="Auto"/>
+                    </Grid.RowDefinitions>
+                    
+                    <Separator Grid.Row="0" Margin="0,0,0,12"/>
+                    
+                    <StackPanel Grid.Row="1">
+                        <TextBlock Text="Create New Group" FontSize="16" FontWeight="SemiBold" Margin="0,0,0,12"/>
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="Auto"/>
+                                <ColumnDefinition Width="200"/>
+                                <ColumnDefinition Width="Auto"/>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="Auto"/>
+                            </Grid.ColumnDefinitions>
+                            
+                            <TextBlock Grid.Column="0" Text="Name:" VerticalAlignment="Center" Margin="0,0,8,0"/>
+                            <TextBox Grid.Column="1" x:Name="NewGroupNameTextBox"
+                                     Text="{Binding NewGroupName, UpdateSourceTrigger=PropertyChanged}"
+                                     Style="{StaticResource ModernTextBoxStyle}"
+                                     Margin="0,0,12,0"
+                                     ToolTip="Enter group name (Ctrl+N to focus here)"/>
+                            
+                            <TextBlock Grid.Column="2" Text="Description:" VerticalAlignment="Center" Margin="0,0,8,0"/>
+                            <TextBox Grid.Column="3" Text="{Binding NewGroupDescription, UpdateSourceTrigger=PropertyChanged}"
+                                     Style="{StaticResource ModernTextBoxStyle}"
+                                     Margin="0,0,12,0"
+                                     ToolTip="Optional description"/>
+                            
+                            <Button Grid.Column="4" Content="Create Group"
+                                    Style="{StaticResource AccentButtonStyle}"
+                                    Command="{Binding CreateGroupCommand}"
+                                    IsEnabled="{Binding NewGroupName, Converter={StaticResource StringToBooleanConverter}}"/>
+                        </Grid>
+                    </StackPanel>
+                </Grid>
+            </StackPanel>
+        </Border>
+
+        <!-- Content: List View or Groups View -->
+        <Grid>
+            <!-- List View (Original DataGrid) -->
+            <DataGrid x:Name="ApkFilesDataGrid"
+                      ItemsSource="{Binding ApkFiles}" 
+                      AutoGenerateColumns="False" 
+                      CanUserAddRows="False"
+                      CanUserDeleteRows="False"
+                      CanUserResizeRows="False"
+                      GridLinesVisibility="None"
+                      HeadersVisibility="Column"
+                      SelectionMode="Single"
+                      Background="White"
+                      RowBackground="White"
+                      AlternatingRowBackground="#F8F9FA"
+                      RowHeight="36"
+                      FontSize="12"
+                      FontFamily="SrotoneRegular"
+                      BorderThickness="0"
+                      BorderBrush="#E0E0E0"
+                      CanUserSortColumns="True"
+                      CanUserReorderColumns="False"
+                      IsReadOnly="False"
+                      EnableRowVirtualization="True"
+                      EnableColumnVirtualization="True"
+                      VirtualizingStackPanel.IsVirtualizing="True"
+                      ScrollViewer.CanContentScroll="True"
+                      ScrollViewer.VerticalScrollBarVisibility="Auto"
+                      ScrollViewer.HorizontalScrollBarVisibility="Disabled"
+                      ScrollViewer.PanningMode="VerticalOnly"
+                      MaxHeight="400"
+                      IsSynchronizedWithCurrentItem="False"
+                      IsTextSearchEnabled="False"
+                      ColumnHeaderHeight="36"
+                      SelectionChanged="ApkFilesDataGrid_SelectionChanged"
+                      Visibility="{Binding ShowGroupsView, Converter={StaticResource BooleanToVisibilityConverter}, ConverterParameter=Invert}">
+                <DataGrid.Resources>
+                    <!-- Existing styles from original code -->
+                    <Style x:Key="CenterAlignedCellStyle" TargetType="DataGridCell">
+                        <Setter Property="BorderBrush" Value="#F5F5F5"/>
+                        <Setter Property="BorderThickness" Value="0,0,0,1"/>
+                        <Setter Property="Template">
+                            <Setter.Value>
+                                <ControlTemplate TargetType="DataGridCell">
+                                    <Border BorderBrush="{TemplateBinding BorderBrush}" 
+                                            BorderThickness="{TemplateBinding BorderThickness}"
+                                            Background="{TemplateBinding Background}">
+                                        <ContentPresenter HorizontalAlignment="Center" 
+                                                        VerticalAlignment="Center" 
+                                                        Margin="3"/>
+                                    </Border>
+                                </ControlTemplate>
+                            </Setter.Value>
+                        </Setter>
+                    </Style>
+                    <Style x:Key="LeftAlignedCellStyle" TargetType="DataGridCell">
+                        <Setter Property="FontFamily" Value="{StaticResource SrotoneRegular}"/>
+                        <Setter Property="BorderBrush" Value="#F5F5F5"/>
+                        <Setter Property="BorderThickness" Value="0,0,0,1"/>
+                        <Setter Property="Template">
+                            <Setter.Value>
+                                <ControlTemplate TargetType="DataGridCell">
+                                    <Border BorderBrush="{TemplateBinding BorderBrush}" 
+                                            BorderThickness="{TemplateBinding BorderThickness}" 
+                                            Background="{TemplateBinding Background}">
+                                        <ContentPresenter HorizontalAlignment="Left" 
+                                                        VerticalAlignment="Center" 
+                                                        Margin="2"/>
+                                    </Border>
+                                </ControlTemplate>
+                            </Setter.Value>
+                        </Setter>
+                    </Style>
+                    <Style x:Key="CenterAlignedHeaderStyle" TargetType="DataGridColumnHeader">
+                        <Setter Property="HorizontalContentAlignment" Value="Center"/>
+                        <Setter Property="VerticalContentAlignment" Value="Center"/>
+                        <Setter Property="FontWeight" Value="SemiBold"/>
+                        <Setter Property="FontSize" Value="13"/>
+                        <Setter Property="Foreground" Value="#333"/>
+                    </Style>
+                    <Style x:Key="CenterAlignedCheckBoxColumnStyle" TargetType="DataGridCell">
+                        <Setter Property="BorderBrush" Value="#F5F5F5"/>
+                        <Setter Property="BorderThickness" Value="0,0,0,1"/>
+                        <Setter Property="FontWeight" Value="Medium"/>
+                        <Setter Property="FontSize" Value="16"/>
+                        <Setter Property="Template">
+                            <Setter.Value>
+                                <ControlTemplate TargetType="DataGridCell">
+                                    <Border BorderBrush="{TemplateBinding BorderBrush}" 
+                                            BorderThickness="{TemplateBinding BorderThickness}" 
+                                            Background="{TemplateBinding Background}">
+                                        <ContentPresenter HorizontalAlignment="Center" 
+                                                        VerticalAlignment="Center" 
+                                                        Margin="2"/>
+                                    </Border>
+                                </ControlTemplate>
+                            </Setter.Value>
+                        </Setter>
+                    </Style>
+                </DataGrid.Resources>
+                <DataGrid.ContextMenu>
+                    <ContextMenu>
+                        <MenuItem Header="Add to Group" 
+                                  ItemsSource="{Binding ApkGroups}">
+                            <MenuItem.ItemContainerStyle>
+                                <Style TargetType="MenuItem">
+                                    <Setter Property="Header" Value="{Binding Name}"/>
+                                    <Setter Property="Command" Value="{Binding DataContext.AddSelectedApksToGroupCommand, RelativeSource={RelativeSource AncestorType=ContextMenu}}"/>
+                                    <Setter Property="CommandParameter" Value="{Binding}"/>
+                                </Style>
+                            </MenuItem.ItemContainerStyle>
+                        </MenuItem>
+                    </ContextMenu>
+                </DataGrid.ContextMenu>
+                <DataGrid.Columns>
+                    <DataGridCheckBoxColumn Binding="{Binding IsSelected, UpdateSourceTrigger=PropertyChanged}" 
+                                            Header="✓" 
+                                            Width="50"
+                                            HeaderStyle="{StaticResource CenterAlignedHeaderStyle}"
+                                            CellStyle="{StaticResource CenterAlignedCheckBoxColumnStyle}"/>
+                    <DataGridTextColumn Binding="{Binding DisplayInfo, Mode=OneWay}" 
+                                        Header="APK Information" 
+                                        Width="*" 
+                                        MinWidth="150" 
+                                        MaxWidth="250" 
+                                        IsReadOnly="True"
+                                        HeaderStyle="{StaticResource CenterAlignedHeaderStyle}"
+                                        CellStyle="{StaticResource LeftAlignedCellStyle}"/>
+                    <DataGridTextColumn Binding="{Binding FileSize, Mode=OneWay}" 
+                                        Header="Size" 
+                                        Width="*" 
+                                        MinWidth="80" 
+                                        MaxWidth="120" 
+                                        IsReadOnly="True"
+                                        HeaderStyle="{StaticResource CenterAlignedHeaderStyle}"
+                                        CellStyle="{StaticResource CenterAlignedCellStyle}"/>
+                    <DataGridTextColumn Binding="{Binding LastModified, Mode=OneWay}" 
+                                        Header="Modified" 
+                                        Width="*" 
+                                        MinWidth="120" 
+                                        MaxWidth="180" 
+                                        IsReadOnly="True"
+                                        HeaderStyle="{StaticResource CenterAlignedHeaderStyle}"
+                                        CellStyle="{StaticResource CenterAlignedCellStyle}"/>
+                    <DataGridTextColumn Binding="{Binding SplitTag, Mode=OneWay}" 
+                                        Header="Split" 
+                                        Width="*" 
+                                        MinWidth="80" 
+                                        MaxWidth="120" 
+                                        IsReadOnly="True"
+                                        HeaderStyle="{StaticResource CenterAlignedHeaderStyle}"
+                                        CellStyle="{StaticResource CenterAlignedCellStyle}"/>
+                </DataGrid.Columns>
+            </DataGrid>
+
+            <!-- Groups View (TreeView) -->
+            <ScrollViewer VerticalScrollBarVisibility="Auto" 
+                          MaxHeight="400"
+                          Visibility="{Binding ShowGroupsView, Converter={StaticResource BooleanToVisibilityConverter}}">
+                <StackPanel>
+                    <!-- Groups List -->
+                    <ItemsControl ItemsSource="{Binding ApkGroups}">
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate>
+                                <Border Background="White" 
+                                        CornerRadius="8" 
+                                        Margin="0,0,0,8" 
+                                        Padding="16"
+                                        Effect="{StaticResource CardShadow}"
+                                        AllowDrop="True"
+                                        Drop="GroupCard_Drop"
+                                        DragEnter="GroupCard_DragEnter"
+                                        DragLeave="GroupCard_DragLeave"
+                                        PreviewMouseLeftButtonDown="GroupCard_MouseDoubleClick">
+                                    <StackPanel>
+                                        <!-- Group Header -->
+                                        <Grid>
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="Auto"/>
+                                                <ColumnDefinition Width="*"/>
+                                                <ColumnDefinition Width="Auto"/>
+                                                <ColumnDefinition Width="Auto"/>
+                                                <ColumnDefinition Width="Auto"/>
+                                            </Grid.ColumnDefinitions>
+                                            
+                                            <!-- Expand/Collapse Button -->
+                                            <Button Grid.Column="0" 
+                                                    Style="{StaticResource ModernButtonStyle}"
+                                                    Command="{Binding ToggleExpandCommand}"
+                                                    Width="30" Height="30"
+                                                    FontSize="12"
+                                                    Margin="0,0,12,0"
+                                                    Click="GroupExpander_Click">
+                                                <Button.Content>
+                                                    <TextBlock>
+                                                        <TextBlock.Style>
+                                                            <Style TargetType="TextBlock">
+                                                                <Setter Property="Text" Value="🔽"/>
+                                                                <Style.Triggers>
+                                                                    <DataTrigger Binding="{Binding IsExpanded}" Value="False">
+                                                                        <Setter Property="Text" Value="🔼"/>
+                                                                    </DataTrigger>
+                                                                </Style.Triggers>
+                                                            </Style>
+                                                        </TextBlock.Style>
+                                                    </TextBlock>
+                                                </Button.Content>
+                                            </Button>
+                                            
+                                            <!-- Group Info -->
+                                            <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                                                <TextBlock Text="{Binding DisplayName}" 
+                                                           FontSize="16" FontWeight="SemiBold"
+                                                           Foreground="#333"/>
+                                                <TextBlock Text="{Binding GroupInfo}" 
+                                                           FontSize="12" 
+                                                           Foreground="#666"/>
+                                                <TextBlock Text="{Binding Description}" 
+                                                           FontSize="12" 
+                                                           Foreground="#888"
+                                                           Visibility="{Binding Description, Converter={StaticResource StringToVisibilityConverter}}"/>
+                                                <TextBlock Text="{Binding CreatedAtText}" 
+                                                           FontSize="10" 
+                                                           Foreground="#AAA"/>
+                                            </StackPanel>
+                                            
+                                            <!-- Group Actions -->
+                                            <Button Grid.Column="2" Content="☑️ Select All"
+                                                    Style="{StaticResource ModernButtonStyle}"
+                                                    Command="{Binding SelectAllApksCommand}"
+                                                    FontSize="12" Padding="8,4"
+                                                    Margin="0,0,6,0"
+                                                    ToolTip="Select all APKs in this group"/>
+                                            
+                                            <Button Grid.Column="3" Content="➕ Add APKs"
+                                                    Style="{StaticResource AccentButtonStyle}"
+                                                    Command="{Binding DataContext.AddSelectedApksToGroupCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
+                                                    CommandParameter="{Binding}"
+                                                    FontSize="12" Padding="8,4"
+                                                    Margin="0,0,6,0"
+                                                    ToolTip="Add selected APKs to this group"/>
+                                            
+                                            <Button Grid.Column="4" Content="🗑️ Delete"
+                                                    Style="{StaticResource ModernButtonStyle}"
+                                                    Command="{Binding DataContext.DeleteGroupCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
+                                                    CommandParameter="{Binding}"
+                                                    FontSize="12" Padding="8,4"
+                                                    Background="#F44336"
+                                                    ToolTip="Delete this group (APK files will not be deleted)"/>
+                                        </Grid>
+                                        
+                                        <!-- APKs in Group -->
+                                        <Border Margin="0,12,0,0" 
+                                                Visibility="{Binding IsExpanded, Converter={StaticResource BooleanToVisibilityConverter}}">
+                                            <ItemsControl ItemsSource="{Binding ApkItems}">
+                                                <ItemsControl.ItemTemplate>
+                                                    <DataTemplate>
+                                                        <Border Background="#F8F9FA" 
+                                                                CornerRadius="4" 
+                                                                Padding="12,8" 
+                                                                Margin="0,0,0,4"
+                                                                PreviewMouseLeftButtonDown="ApkItem_PreviewMouseLeftButtonDown"
+                                                                MouseMove="ApkItem_MouseMove"
+                                                                MouseRightButtonUp="ShowApkContextMenu">
+                                                            <Grid>
+                                                                <Grid.ColumnDefinitions>
+                                                                    <ColumnDefinition Width="Auto"/>
+                                                                    <ColumnDefinition Width="*"/>
+                                                                    <ColumnDefinition Width="Auto"/>
+                                                                    <ColumnDefinition Width="Auto"/>
+                                                                    <ColumnDefinition Width="Auto"/>
+                                                                    <ColumnDefinition Width="Auto"/>
+                                                                </Grid.ColumnDefinitions>
+                                                                
+                                                                <CheckBox Grid.Column="0" 
+                                                                          IsChecked="{Binding IsSelected}"
+                                                                          Margin="0,0,12,0"/>
+                                                                
+                                                                <TextBlock Grid.Column="1" 
+                                                                           Text="{Binding DisplayInfo}" 
+                                                                           FontWeight="Medium"
+                                                                           VerticalAlignment="Center"
+                                                                           ToolTip="{Binding FilePath}"/>
+                                                                
+                                                                <TextBlock Grid.Column="2" 
+                                                                           Text="{Binding FileSize}" 
+                                                                           FontSize="12" 
+                                                                           Foreground="#666"
+                                                                           VerticalAlignment="Center"
+                                                                           Margin="0,0,12,0"/>
+                                                                
+                                                                <TextBlock Grid.Column="3" 
+                                                                           Text="{Binding LastModified}" 
+                                                                           FontSize="12" 
+                                                                           Foreground="#666"
+                                                                           VerticalAlignment="Center"
+                                                                           Margin="0,0,12,0"/>
+                                                                
+                                                                <TextBlock Grid.Column="4" 
+                                                                           Text="{Binding SplitTag}" 
+                                                                           FontSize="12" 
+                                                                           Foreground="#666"
+                                                                           VerticalAlignment="Center"
+                                                                           Margin="0,0,12,0"/>
+                                                                
+                                                                <Button Grid.Column="5" Content="🗑️"
+                                                                        Style="{StaticResource ModernButtonStyle}"
+                                                                        Background="#F44336"
+                                                                        Width="24" Height="24"
+                                                                        FontSize="10"
+                                                                        Command="{Binding DataContext.RemoveApkFromGroupCommand, RelativeSource={RelativeSource AncestorType=ItemsControl, AncestorLevel=2}}"
+                                                                        ToolTip="Remove from group">
+                                                                    <Button.CommandParameter>
+                                                                        <MultiBinding Converter="{StaticResource MultiValueConverter}">
+                                                                            <Binding Path="DataContext" RelativeSource="{RelativeSource AncestorType=Border, AncestorLevel=2}"/>
+                                                                            <Binding Path="."/>
+                                                                        </MultiBinding>
+                                                                    </Button.CommandParameter>
+                                                                </Button>
+                                                            </Grid>
+                                                        </Border>
+                                                    </DataTemplate>
+                                                </ItemsControl.ItemTemplate>
+                                            </ItemsControl>
+                                        </Border>
+                                        
+                                        <!-- Empty Group Message -->
+                                        <Border Margin="0,12,0,0"
+                                                Padding="24,12"
+                                                Background="#F5F5F5"
+                                                CornerRadius="4"
+                                                Visibility="{Binding ApkItems.Count, Converter={StaticResource IntToVisibilityConverter}, ConverterParameter=0}">
+                                            <StackPanel HorizontalAlignment="Center">
+                                                <TextBlock Text="📂" FontSize="24" HorizontalAlignment="Center" Margin="0,0,0,8"/>
+                                                <TextBlock Text="No APKs in this group yet"
+                                                           FontSize="12" 
+                                                           FontWeight="SemiBold"
+                                                           Foreground="#999" 
+                                                           HorizontalAlignment="Center"
+                                                           Margin="0,0,0,4"/>
+                                                <TextBlock Text="Use 'Add APKs' button or drag &amp; drop APKs here"
+                                                           FontSize="11" 
+                                                           Foreground="#BBB" 
+                                                           HorizontalAlignment="Center"/>
+                                            </StackPanel>
+                                        </Border>
+                                    </StackPanel>
+                                </Border>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                    
+                    <!-- Empty Groups Message -->
+                    <Border Background="White" 
+                            CornerRadius="8" 
+                            Padding="32"
+                            Visibility="{Binding ApkGroups.Count, Converter={StaticResource IntToVisibilityConverter}, ConverterParameter=0}">
+                        <StackPanel HorizontalAlignment="Center">
+                            <TextBlock Text="📁" FontSize="48" HorizontalAlignment="Center" Margin="0,0,0,16"/>
+                            <TextBlock Text="No groups created yet" 
+                                       FontSize="16" FontWeight="SemiBold"
+                                       HorizontalAlignment="Center" 
+                                       Foreground="#666"
+                                       Margin="0,0,0,8"/>
+                            <TextBlock Text="Create your first group to organize your APK files"
+                                       FontSize="14" 
+                                       HorizontalAlignment="Center" 
+                                       Foreground="#888"/>
+                        </StackPanel>
+                    </Border>
+                </StackPanel>
+            </ScrollViewer>
+        </Grid>
+    </StackPanel>
+</Grid>
+                
+                <!-- Install Queue Module -->
+                <Grid x:Name="InstallQueueContent" 
+                      Visibility="{Binding CurrentModule, Converter={StaticResource ModuleToVisibilityConverter}, ConverterParameter='InstallQueue'}">
                     <StackPanel>
                         <!-- Header Section -->
                          <Border CornerRadius="12" Padding="12" Margin="0,0,0,12" 
-                            Effect="{StaticResource CardShadow}">
+                                 Effect="{StaticResource CardShadow}">
                              <Border.Background>
                                  <LinearGradientBrush StartPoint="0,0" EndPoint="1,1">
                                      <GradientStop Color="#764ba2" Offset="0"/>
@@ -407,250 +951,39 @@
                                  </LinearGradientBrush>
                              </Border.Background>
                              <StackPanel>
-                                 <TextBlock Text="📦 APK Repository" 
+                                 <TextBlock Text="⏳ Installation Queue" 
                                             FontSize="20" FontWeight="Bold" 
                                             Foreground="White" Margin="0,0,0,8"/>
-                                 <TextBlock Text="Search and manage your APK files" 
+                                 <TextBlock Text="Select devices and APKs, then click Install" 
                                             FontSize="12" Foreground="White" Opacity="0.5"/>
                              </StackPanel>
                          </Border>
-
-                        <!-- Repository and Selection Controls -->
-                        <Grid Margin="0,0,0,6" Effect="{StaticResource CardShadow}">
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="200"/>
-                                <ColumnDefinition Width="*"/>
-                                <!-- <ColumnDefinition Width="Auto"/> -->
-                                <ColumnDefinition Width="Auto"/>
-                                <ColumnDefinition Width="Auto"/>
-                                <ColumnDefinition Width="150"/>
-                            </Grid.ColumnDefinitions>
-                            
-                            <!-- Choose Repository Button -->
-                            <Button Grid.Column="0" Content="📁 Choose APK Repository" 
-                                    Style="{StaticResource ModernButtonStyle}"
-                                    Command="{Binding ChooseRepoCommand}"
-                                    Margin="4,0,6,6"
-                                    FontSize="14" Padding="5,5"/>
-                            
-                            <!-- Repository Path TextBox -->
-                            <TextBox Grid.Column="1" Text="{Binding ApkRepoPath, FallbackValue='No folder selected'}" 
-                                     Style="{StaticResource ModernTextBoxStyle}"
-                                     IsReadOnly="True" 
-                                     VerticalAlignment="Center"
-                                     Margin="0,0,6,6"
-                                     FontSize="14" Padding="5,5"/>
-                            
-                            <!-- Rescan Button -->
-                            <!-- <Button Grid.Column="2" Content="🔄 Rescan"
-                                    Style="{StaticResource ModernButtonStyle}"
-                                    Command="{Binding RefreshRepoCommand}"
-                                    Margin="0,0,4,6"
-                                    FontSize="14" Padding="5,5"/> -->
-                            
-                            <!-- Select All Button -->
-                            <Button Grid.Column="2" Content="☑️ Select All" 
-                                    Style="{StaticResource ModernButtonStyle}"
-                                    Command="{Binding SelectAllApksCommand}"
-                                    FontSize="14" Padding="8,5" Margin="0,0,6,6"/>
-                            
-                            <!-- Clear Selection Button -->
-                            <Button Grid.Column="3" Content="❌ Clear All" 
-                                    Style="{StaticResource ModernButtonStyle}"
-                                    Command="{Binding ClearApkSelectionCommand}"
-                                    FontSize="14" Padding="8,5" Margin="0,0,6,6"/>
-                            
-                            <!-- Selection Count Badge -->
-                            <Border Grid.Column="4" Background="#E8F5E8" CornerRadius="8" Padding="12,12" 
-                                    VerticalAlignment="Center" Margin="0,0,6,6">
-                                <TextBlock Text="{Binding SelectedApksCountText, FallbackValue='No APK selected'}" 
-                                           Foreground="#2E7D32" FontSize="14" FontWeight="Medium"/>
-                            </Border>
-                        </Grid>
-                        
-                        <!-- APK Files DataGrid -->
-                        <DataGrid x:Name="ApkFilesDataGrid"
-                                ItemsSource="{Binding ApkFiles}" 
-                                AutoGenerateColumns="False" 
-                                CanUserAddRows="False"
-                                CanUserDeleteRows="False"
-                                CanUserResizeRows="False"
-                                GridLinesVisibility="None"
-                                HeadersVisibility="Column"
-                                SelectionMode="Single"
-                                Background="White"
-                                RowBackground="White"
-                                AlternatingRowBackground="#F8F9FA"
-                                RowHeight="36"
-                                FontSize="12"
-                                FontFamily="SrotoneRegular"
-                                BorderThickness="0"
-                                BorderBrush="#E0E0E0"
-                                CanUserSortColumns="True"
-                                CanUserReorderColumns="False"
-                                IsReadOnly="False"
-                                EnableRowVirtualization="True"
-                                EnableColumnVirtualization="True"
-                                VirtualizingStackPanel.IsVirtualizing="True"
-                                ScrollViewer.CanContentScroll="True"
-                                ScrollViewer.VerticalScrollBarVisibility="Auto"
-                                ScrollViewer.HorizontalScrollBarVisibility="Disabled"
-                                ScrollViewer.PanningMode="VerticalOnly"
-                                MaxHeight="400"
-                                IsSynchronizedWithCurrentItem="False"
-                                IsTextSearchEnabled="False"
-                                ColumnHeaderHeight="36"
-                                SelectionChanged="ApkFilesDataGrid_SelectionChanged">
-                                <DataGrid.Resources>
-                                    <!-- Center alignment style for all cells -->
-                                    <Style x:Key="CenterAlignedCellStyle" TargetType="DataGridCell">
-                                        <Setter Property="BorderBrush" Value="#F5F5F5"/>
-                                        <Setter Property="BorderThickness" Value="0,0,0,1"/>
-                                        <Setter Property="Template">
-                                            <Setter.Value>
-                                                <ControlTemplate TargetType="DataGridCell">
-                                                    <Border BorderBrush="{TemplateBinding BorderBrush}" 
-                                                            BorderThickness="{TemplateBinding BorderThickness}"
-                                                            Background="{TemplateBinding Background}">
-                                                        <ContentPresenter HorizontalAlignment="Center" 
-                                                                        VerticalAlignment="Center" 
-                                                                        Margin="3"/>
-                                                    </Border>
-                                                </ControlTemplate>
-                                            </Setter.Value>
-                                        </Setter>
-                                    </Style>
-                                    <Style x:Key="LeftAlignedCellStyle" TargetType="DataGridCell">
-                                            <Setter Property="FontFamily" Value="{StaticResource RobotoLightFont}"/>
-                                            <Setter Property="BorderBrush" Value="#F5F5F5"/>
-                                            <Setter Property="BorderThickness" Value="0,0,0,1"/>
-                                            <Setter Property="Template">
-                                                <Setter.Value>
-                                                    <ControlTemplate TargetType="DataGridCell">
-                                                        <Border BorderBrush="{TemplateBinding BorderBrush}" 
-                                                                BorderThickness="{TemplateBinding BorderThickness}" 
-                                                                Background="{TemplateBinding Background}">
-                                                            <ContentPresenter HorizontalAlignment="Left" 
-                                                                            VerticalAlignment="Center" 
-                                                                            Margin="2"/>
-                                                        </Border>
-                                                    </ControlTemplate>
-                                                </Setter.Value>
-                                            </Setter>
-                                    </Style>
-                                    <!-- Center alignment style for headers -->
-                                    <Style x:Key="CenterAlignedHeaderStyle" TargetType="DataGridColumnHeader">
-                                        <Setter Property="HorizontalContentAlignment" Value="Center"/>
-                                        <Setter Property="VerticalContentAlignment" Value="Center"/>
-                                        <Setter Property="FontWeight" Value="SemiBold"/>
-                                        <Setter Property="FontSize" Value="13"/>
-                                        <Setter Property="Foreground" Value="#333"/>
-                                    </Style>
-                                    
-                                    <!-- Special style for checkbox column to center the checkbox -->
-                                    <Style x:Key="CenterAlignedCheckBoxColumnStyle" TargetType="DataGridCell">
-                                        <Setter Property="BorderBrush" Value="#F5F5F5"/>
-                                        <Setter Property="BorderThickness" Value="0,0,0,1"/>
-                                        <Setter Property="FontWeight" Value="Medium"/>
-                                        <Setter Property="FontSize" Value="16"/>
-                                        <Setter Property="Template">
-                                            <Setter.Value>
-                                                <ControlTemplate TargetType="DataGridCell">
-                                                    <Border BorderBrush="{TemplateBinding BorderBrush}" 
-                                                            BorderThickness="{TemplateBinding BorderThickness}" 
-                                                            Background="{TemplateBinding Background}">
-                                                        <ContentPresenter HorizontalAlignment="Center" 
-                                                                        VerticalAlignment="Center" 
-                                                                        Margin="2"/>
-                                                    </Border>
-                                                </ControlTemplate>
-                                            </Setter.Value>
-                                        </Setter>
-                                    </Style>
-                                </DataGrid.Resources>
-                                <DataGrid.Columns>
-                                    <DataGridCheckBoxColumn Binding="{Binding IsSelected, UpdateSourceTrigger=PropertyChanged}" 
-                                                            Header="✓" 
-                                                            Width="50"
-                                                            HeaderStyle="{StaticResource CenterAlignedHeaderStyle}"
-                                                            CellStyle="{StaticResource CenterAlignedCheckBoxColumnStyle}"/>
-                                    <DataGridTextColumn Binding="{Binding DisplayInfo, Mode=OneWay}" 
-                                                        Header="APK Information" 
-                                                        Width="*" 
-                                                        MinWidth="100" 
-                                                        MaxWidth="200" 
-                                                        IsReadOnly="True"
-                                                        HeaderStyle="{StaticResource CenterAlignedHeaderStyle}"
-                                                        CellStyle="{StaticResource LeftAlignedCellStyle}"/>
-                                    <DataGridTextColumn Binding="{Binding FileSize, Mode=OneWay}" 
-                                                        Header="Size" 
-                                                        Width="*" 
-                                                        MinWidth="80" 
-                                                        MaxWidth="120" 
-                                                        IsReadOnly="True"
-                                                        HeaderStyle="{StaticResource CenterAlignedHeaderStyle}"
-                                                        CellStyle="{StaticResource CenterAlignedCellStyle}"/>
-                                    <DataGridTextColumn Binding="{Binding LastModified, Mode=OneWay}" 
-                                                        Header="Modified" 
-                                                        Width="*" 
-                                                        MinWidth="120" 
-                                                        MaxWidth="180" 
-                                                        IsReadOnly="True"
-                                                        HeaderStyle="{StaticResource CenterAlignedHeaderStyle}"
-                                                        CellStyle="{StaticResource CenterAlignedCellStyle}"/>
-                                    <DataGridTextColumn Binding="{Binding SplitTag, Mode=OneWay}" 
-                                                        Header="Split" 
-                                                        Width="*" 
-                                                        MinWidth="80" 
-                                                        MaxWidth="120" 
-                                                        IsReadOnly="True"
-                                                        HeaderStyle="{StaticResource CenterAlignedHeaderStyle}"
-                                                        CellStyle="{StaticResource CenterAlignedCellStyle}"/>
-                                </DataGrid.Columns>
-                            </DataGrid>
-                
-                    </StackPanel>
-                </Grid>
-                
-                <!-- Install Queue Module -->
-                <Grid x:Name="InstallQueueContent" 
-                      Visibility="{Binding CurrentModule, Converter={StaticResource ModuleToVisibilityConverter}, ConverterParameter='InstallQueue'}">
-                    <StackPanel>
-                        <TextBlock Text="⏳ Installation Queue" 
-                                   FontSize="24" FontWeight="Bold" 
-                                   Foreground="#333" Margin="0,0,0,20"/>
                         
                         <!-- Installation Controls -->
                         <Grid Margin="0,0,0,16">
                             <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="Auto"/>
+                                <ColumnDefinition Width="Auto"/>
+                                <ColumnDefinition Width="Auto"/>
+                                <ColumnDefinition Width="Auto"/>
                                 <ColumnDefinition Width="Auto"/>
                                 <ColumnDefinition Width="*"/>
                             </Grid.ColumnDefinitions>
                             <Button Grid.Column="0" Content="⚡ Install on Selected Devices" 
                                     Style="{StaticResource AccentButtonStyle}"
                                     Command="{Binding InstallOnSelectedCommand}"
-                                    FontSize="14" Padding="20,10" Margin="0,0,12,0"/>
-                            <TextBlock Grid.Column="1" Text="Select devices and APKs, then click Install" 
-                                       Foreground="#666" VerticalAlignment="Center"/>
-                        </Grid>
-                        
-                        <!-- Installation Options -->
-                        <Grid Margin="0,0,0,16">
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="Auto"/>
-                                <ColumnDefinition Width="Auto"/>
-                                <ColumnDefinition Width="Auto"/>
-                                <ColumnDefinition Width="*"/>
-                            </Grid.ColumnDefinitions>
-                            <CheckBox Grid.Column="0" Content="Reinstall (-r)" 
+                                    FontSize="14" Padding="20,10" Margin="0,0,12,0" VerticalAlignment="Center"/>
+                            <!-- <TextBlock Grid.Column="1" Text="Select devices and APKs, then click Install" 
+                                       Foreground="#666" VerticalAlignment="Center"/> -->
+                            <CheckBox Grid.Column="1" Content="Reinstall (-r)" 
                                       IsChecked="{Binding OptReinstall}" 
-                                      Margin="0,0,16,0" VerticalAlignment="Center"/>
-                            <CheckBox Grid.Column="1" Content="Grant Permissions (-g)" 
+                                      FontSize="12" Margin="0,0,12,0" VerticalAlignment="Center"/>
+                            <CheckBox Grid.Column="2" Content="Grant Permissions (-g)" 
                                       IsChecked="{Binding OptGrantPerms}" 
-                                      Margin="0,0,16,0" VerticalAlignment="Center"/>
-                            <CheckBox Grid.Column="2" Content="Allow Downgrade (-d)" 
+                                      FontSize="12" Margin="0,0,12,0" VerticalAlignment="Center"/>
+                            <CheckBox Grid.Column="3" Content="Allow Downgrade (-d)" 
                                       IsChecked="{Binding OptDowngrade}"
-                                      Margin="0,0,16,0" VerticalAlignment="Center"/>
+                                      FontSize="12" Margin="0,0,12,0" VerticalAlignment="Center"/>
                         </Grid>
                         
                         <!-- Queue Status -->
@@ -659,6 +992,7 @@
                                 <TextBlock Text="Queue Status" FontSize="16" FontWeight="SemiBold" Margin="0,0,0,12"/>
                                 <Grid>
                                     <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*"/>
                                         <ColumnDefinition Width="*"/>
                                         <ColumnDefinition Width="*"/>
                                         <ColumnDefinition Width="*"/>
@@ -673,10 +1007,14 @@
                                         <TextBlock Text="Total APKs" Foreground="#666"/>
                                     </StackPanel>
                                     <StackPanel Grid.Column="2" HorizontalAlignment="Center">
-                                        <TextBlock Text="{Binding SelectedDevicesCount, FallbackValue=0}" FontSize="24" FontWeight="Bold" Foreground="#1976D2"/>
-                                        <TextBlock Text="Selected Devices" Foreground="#666"/>
+                                        <TextBlock Text="{Binding BaseApkCount, FallbackValue=0}" FontSize="24" FontWeight="Bold" Foreground="#FF9800"/>
+                                        <TextBlock Text="Base APKs" Foreground="#666"/>
                                     </StackPanel>
                                     <StackPanel Grid.Column="3" HorizontalAlignment="Center">
+                                        <TextBlock Text="{Binding SplitApkCount, FallbackValue=0}" FontSize="24" FontWeight="Bold" Foreground="#9C27B0"/>
+                                        <TextBlock Text="Split APKs" Foreground="#666"/>
+                                    </StackPanel>
+                                    <StackPanel Grid.Column="4" HorizontalAlignment="Center">
                                         <TextBlock Text="{Binding SelectedApksCount, FallbackValue=0}" FontSize="24" FontWeight="Bold" Foreground="#2E7D32"/>
                                         <TextBlock Text="Selected APKs" Foreground="#666"/>
                                     </StackPanel>
@@ -706,7 +1044,7 @@
                                                 Padding="8,4"/>
                                     </StackPanel>
                                 </Grid>
-                                <Border Background="#1E1E1E" CornerRadius="4" Padding="12">
+                                <Border Background="#1E1E1E" CornerRadius="4" Padding="12" Width="Auto">
                                     <ScrollViewer x:Name="LogScrollViewer" 
                                                   VerticalScrollBarVisibility="Auto" 
                                                   MaxHeight="200"
