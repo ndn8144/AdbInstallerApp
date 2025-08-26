@@ -7,8 +7,12 @@ DispatcherUnhandledException="Application_DispatcherUnhandledException">
     <!-- App icon resource -->
     <Image x:Key="AppIcon" Source="Assets/Icons/android.png"/>
     <!-- Font Resources -->
-    <FontFamily x:Key="RobotoFont">./Assets/Fonts/Roboto-Regular.ttf#Roboto</FontFamily>
-    <FontFamily x:Key="RobotoLightFont">./Assets/Fonts/Roboto-VariableFont.ttf#Roboto</FontFamily>
+    <FontFamily x:Key="SrotoneRegular">pack://application:,,,/Assets/Fonts/SrotoneRegular.ttf#SrotoneRegular</FontFamily>
+    <FontFamily x:Key="SrotoneLight">pack://application:,,,/Assets/Fonts/SrotoneLight.ttf#SrotoneLight</FontFamily>
+    <FontFamily x:Key="SrotoneMedium">pack://application:,,,/Assets/Fonts/SrotoneMedium.ttf#SrotoneMedium</FontFamily>
+    <FontFamily x:Key="SrotoneBold">pack://application:,,,/Assets/Fonts/SrotoneBold.ttf#SrotoneBold</FontFamily>
+    <FontFamily x:Key="SrotoneExtraBold">pack://application:,,,/Assets/Fonts/SrotoneExtraBold.ttf#SrotoneExtraBold</FontFamily>
+    <FontFamily x:Key="SrotoneSemiBold">pack://application:,,,/Assets/Fonts/SrotoneSemiBold.ttf#SrotoneSemiBold</FontFamily>
     <!-- Modern Color Palette -->
     <SolidColorBrush x:Key="PrimaryBrush" Color="#667eea"/>
     <SolidColorBrush x:Key="PrimaryDarkBrush" Color="#764ba2"/>
@@ -33,6 +37,8 @@ DispatcherUnhandledException="Application_DispatcherUnhandledException">
         <Setter Property="Padding" Value="16,8"/>
         <Setter Property="MinHeight" Value="36"/>
         <Setter Property="FontWeight" Value="Medium"/>
+        <Setter Property="FontSize" Value="14"/>
+        <Setter Property="FontFamily" Value="{StaticResource SrotoneRegular}"/>
         <Setter Property="Cursor" Value="Hand"/>
         <Setter Property="Template">
             <Setter.Value>
@@ -190,7 +196,7 @@ DispatcherUnhandledException="Application_DispatcherUnhandledException">
             <Setter Property="Background" Value="Transparent"/>
             <Setter Property="BorderThickness" Value="0"/>
             <Setter Property="FontSize" Value="13"/>
-            <Setter Property="FontFamily" Value="Segoe UI"/>
+            <Setter Property="FontFamily" Value="SrotoneRegular"/>
             <Setter Property="Foreground" Value="#333"/>
             <Setter Property="VerticalAlignment" Value="Center"/>
             <Setter Property="HorizontalAlignment" Value="Center"/>

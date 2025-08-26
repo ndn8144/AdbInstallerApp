@@ -85,5 +85,42 @@ namespace AdbInstallerApp.Views
             }
         }
 
+        private void LogScrollViewer_ScrollChanged(object sender, ScrollChangedEventArgs e)
+        {
+            // Auto-scroll to bottom if auto-scroll is enabled and user is near bottom
+            if (AutoScrollCheckBox.IsChecked == true)
+            {
+                if (e.ExtentHeightChange > 0 || e.ViewportHeightChange > 0)
+                {
+                    LogScrollViewer.ScrollToBottom();
+                }
+            }
+        }
+
+        private void GoToBottom_Click(object sender, RoutedEventArgs e)
+        {
+            LogScrollViewer.ScrollToBottom();
+            AutoScrollCheckBox.IsChecked = true; // Enable auto-scroll when manually going to bottom
+        }
+
+        // Method to add log entry with auto-scroll support
+        public void AddLogEntry(string message)
+        {
+            // Add timestamp
+            string timestamp = DateTime.Now.ToString("HH:mm:ss");
+            string logEntry = $"[{timestamp}] {message}\n";
+            
+            // Update the bound property
+            if (DataContext is MainViewModel viewModel)
+            {
+                viewModel.LogText += logEntry;
+            }
+            
+            // Auto-scroll if enabled
+            if (AutoScrollCheckBox.IsChecked == true)
+            {
+                LogScrollViewer.ScrollToBottom();
+            }
+        }
     }
 }

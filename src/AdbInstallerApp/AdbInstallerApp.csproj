@@ -24,9 +24,7 @@
 
   <ItemGroup>
     <!-- Copy font files to output directory -->
-    <None Include="Assets\Fonts\*.ttf">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </None>
+    <Resource Include="Assets\Fonts\*.ttf" />
     <None Include="Assets\Icons\*.png">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
