@@ -10,13 +10,13 @@ namespace AdbInstallerApp.Converters
         public object Convert(object? value, Type targetType, object? parameter, CultureInfo culture)
         {
             bool isNull = value == null;
-            
+
             // If parameter is "Invert", reverse the logic
             if (parameter?.ToString()?.Equals("Invert", StringComparison.OrdinalIgnoreCase) == true)
             {
                 isNull = !isNull;
             }
-            
+
             return isNull ? Visibility.Visible : Visibility.Collapsed;
         }
 

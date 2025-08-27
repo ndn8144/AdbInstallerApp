@@ -13,19 +13,19 @@ namespace AdbInstallerApp.Converters
                 return Visibility.Collapsed;
 
             string? stringValue = value.ToString();
-            
+
             // If parameter is provided, check if string equals parameter
             if (parameter != null)
             {
                 string? targetString = parameter.ToString();
                 if (stringValue != null && targetString != null)
                 {
-                    return string.Equals(stringValue, targetString, StringComparison.OrdinalIgnoreCase) 
-                        ? Visibility.Visible 
+                    return string.Equals(stringValue, targetString, StringComparison.OrdinalIgnoreCase)
+                        ? Visibility.Visible
                         : Visibility.Collapsed;
                 }
             }
-            
+
             // If no parameter, show if string is not empty
             return string.IsNullOrWhiteSpace(stringValue) ? Visibility.Collapsed : Visibility.Visible;
         }

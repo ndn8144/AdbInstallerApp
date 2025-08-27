@@ -17,7 +17,7 @@ namespace AdbInstallerApp.Converters
                 }
                 return intValue > 0 ? Visibility.Visible : Visibility.Collapsed;
             }
-            
+
             if (value is long longValue)
             {
                 if (parameter is string paramStr && int.TryParse(paramStr, out int minCount))
@@ -26,7 +26,7 @@ namespace AdbInstallerApp.Converters
                 }
                 return longValue > 0 ? Visibility.Visible : Visibility.Collapsed;
             }
-            
+
             return Visibility.Collapsed;
         }
 

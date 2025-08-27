@@ -12,24 +12,24 @@ namespace AdbInstallerApp.Models
         public DateTime CreatedAt { get; set; } = DateTime.Now;
         public ObservableCollection<ApkItem> ApkItems { get; set; } = new();
         public string Color { get; set; } = "#667eea"; // Default color
-        
+
         public int ApkCount => ApkItems?.Count ?? 0;
         public long TotalSize => ApkItems?.Sum(a => a.FileSize) ?? 0;
         public string DisplayName => string.IsNullOrEmpty(Name) ? "Unnamed Group" : Name;
         public string CreatedAtText => CreatedAt.ToString("yyyy-MM-dd HH:mm");
         public string GroupInfo => $"{ApkCount} APK(s) - {FormatFileSize(TotalSize)}";
-        
+
         public ApkGroup()
         {
             ApkItems = new ObservableCollection<ApkItem>();
         }
-        
+
         public ApkGroup(string name, string description = "") : this()
         {
             Name = name;
             Description = description;
         }
-        
+
         public void AddApk(ApkItem apk)
         {
             if (apk != null && !ApkItems.Contains(apk))
@@ -37,7 +37,7 @@ namespace AdbInstallerApp.Models
                 ApkItems.Add(apk);
             }
         }
-        
+
         public void RemoveApk(ApkItem apk)
         {
             if (apk != null)
@@ -45,12 +45,12 @@ namespace AdbInstallerApp.Models
                 ApkItems.Remove(apk);
             }
         }
-        
+
         public void ClearApks()
         {
             ApkItems.Clear();
         }
-        
+
         public bool ContainsApk(ApkItem apk)
         {
             return ApkItems.Contains(apk);
@@ -83,7 +83,7 @@ namespace AdbInstallerApp.Models
         private static string FormatFileSize(long bytes)
         {
             if (bytes == 0) return "0 B";
-            
+
             string[] sizes = { "B", "KB", "MB", "GB" };
             double len = bytes;
             int order = 0;

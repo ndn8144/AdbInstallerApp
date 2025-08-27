@@ -21,6 +21,7 @@ namespace AdbInstallerApp.ViewModels
         private readonly DeviceMonitor _monitor = null!;
         private readonly ApkRepoIndexer _repo = null!;
         private readonly InstallOrchestrator _installer = null!;
+        private readonly ApkValidationService _apkValidator = null!;
         private System.Threading.Timer? _refreshTimer;
 
         public ObservableCollection<DeviceViewModel> Devices { get; } = new();
@@ -31,7 +32,7 @@ namespace AdbInstallerApp.ViewModels
         [ObservableProperty]
         private bool _isLoadingApps = false;
 
-        [ObservableProperty] 
+        [ObservableProperty]
         private bool _showUserAppsOnly = true;
 
         [ObservableProperty]
@@ -46,7 +47,7 @@ namespace AdbInstallerApp.ViewModels
         [ObservableProperty]
         private string _exportDirectory = string.Empty;
 
-        [ObservableProperty] 
+        [ObservableProperty]
         private bool _exportIncludeSplits = true;
 
         [ObservableProperty]
@@ -63,19 +64,19 @@ namespace AdbInstallerApp.ViewModels
 
         [ObservableProperty]
         private string _logText = string.Empty;
-        
+
         [ObservableProperty]
         private string _currentModule = "Welcome";
-        
+
         [ObservableProperty]
         private bool _showGroupsView = false;
-        
+
         [ObservableProperty]
         private ApkGroupViewModel? _selectedGroup;
-        
+
         [ObservableProperty]
         private string _newGroupName = string.Empty;
-        
+
         [ObservableProperty]
         private string _newGroupDescription = string.Empty;
 
@@ -83,18 +84,18 @@ namespace AdbInstallerApp.ViewModels
         public string InstalledAppsCountText => $"{InstalledApps.Count} Apps";
         public int SelectedInstalledAppsCount => InstalledApps.Count(a => a.IsSelected);
         public string SelectedInstalledAppsCountText => SelectedInstalledAppsCount > 0 ? $"{SelectedInstalledAppsCount} app(s) selected" : "No apps selected";
-                
+
         // Computed properties for display
         public string DevicesCountText => $"{Devices.Count} Devices";
         public string ApkFilesCountText => $"{ApkFiles.Count} APKs";
         public string ApkGroupsCountText => $"{ApkGroups.Count} Groups";
         public string DeviceStatusSummary => Devices.Count > 0 ? $"{Devices.Count} device(s) connected" : "No devices connected";
-        
+
         // APK Classification properties
         public int BaseApkCount => ApkFiles.Count(a => a.Model?.SplitTag == "Base" || string.IsNullOrEmpty(a.Model?.SplitTag));
         public int SplitApkCount => ApkFiles.Count(a => !string.IsNullOrEmpty(a.Model?.SplitTag) && a.Model.SplitTag != "Base");
         public string ApkClassificationText => $"{BaseApkCount} Base, {SplitApkCount} Split";
-        
+
         // Selection properties
         public int SelectedDevicesCount => Devices.Count(d => d.IsSelected);
         public int SelectedApksCount => ApkFiles.Count(a => a.IsSelected) + ApkGroups.SelectMany(g => g.ApkItems).Count(a => a.IsSelected);
@@ -107,18 +108,19 @@ namespace AdbInstallerApp.ViewModels
             try
             {
                 AppendLog("🔧 Initializing ADB APK Installer...");
-                
+
                 _settings = JsonSettings.Load();
                 AppendLog("✅ Settings loaded successfully");
-                
+
                 _adb = new AdbService();
                 AppendLog("✅ ADB service initialized");
-                
+
                 _monitor = new DeviceMonitor(_adb);
                 _repo = new ApkRepoIndexer();
                 _installer = new InstallOrchestrator(_adb);
                 _appInventory = new AppInventoryService(_adb);
                 _apkExporter = new ApkExportService(_adb);
+                _apkValidator = new ApkValidationService();
                 AppendLog("✅ App inventory and export services initialized");
 
                 ApkRepoPath = _settings.ApkRepoPath;
@@ -129,7 +131,7 @@ namespace AdbInstallerApp.ViewModels
                 _monitor.DevicesChanged += OnDevicesChanged;
                 _monitor.Start();
                 AppendLog("✅ Device monitoring started");
-                
+
                 _repo.SetRepo(ApkRepoPath);
                 RebuildApkList();
                 LoadApkGroups();
@@ -148,7 +150,7 @@ namespace AdbInstallerApp.ViewModels
             catch (Exception ex)
             {
                 AppendLog($"❌ Initialization error: {ex.Message}");
-                System.Windows.MessageBox.Show($"Failed to initialize application: {ex.Message}", 
+                System.Windows.MessageBox.Show($"Failed to initialize application: {ex.Message}",
                     "Initialization Error", System.Windows.MessageBoxButton.OK, System.Windows.MessageBoxImage.Error);
             }
         }
@@ -160,7 +162,7 @@ namespace AdbInstallerApp.ViewModels
                 _refreshTimer?.Dispose();
                 _refreshTimer = null;
                 SaveApkGroups();
-                
+
                 // Dispose APK group ViewModels
                 foreach (var group in ApkGroups)
                 {
@@ -183,13 +185,13 @@ namespace AdbInstallerApp.ViewModels
                     if (devices != null)
                     {
                         var addedSerials = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-                        
+
                         foreach (var d in devices)
                         {
                             if (d != null && !string.IsNullOrEmpty(d.Serial?.Trim()))
                             {
                                 var serial = d.Serial.Trim();
-                                
+
                                 if (!addedSerials.Contains(serial))
                                 {
                                     var deviceVM = new DeviceViewModel(d);
@@ -212,7 +214,7 @@ namespace AdbInstallerApp.ViewModels
                     {
                         AppendLog("Warning: Null devices list received");
                     }
-                    
+
                     RefreshComputedProperties();
                 }
                 catch (Exception ex)
@@ -232,13 +234,13 @@ namespace AdbInstallerApp.ViewModels
                     if (_repo?.Items != null)
                     {
                         var addedFiles = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-                        
+
                         foreach (var item in _repo.Items)
                         {
                             if (item != null && !string.IsNullOrEmpty(item.FilePath?.Trim()))
                             {
                                 var filePath = item.FilePath.Trim();
-                                
+
                                 if (!addedFiles.Contains(filePath))
                                 {
                                     var apkVM = new ApkItemViewModel(item);
@@ -262,7 +264,7 @@ namespace AdbInstallerApp.ViewModels
                     {
                         AppendLog("Warning: No APK repository or items available");
                     }
-                    
+
                     Application.Current.Dispatcher.BeginInvoke(() =>
                     {
                         RefreshComputedProperties();
@@ -305,7 +307,7 @@ namespace AdbInstallerApp.ViewModels
             try
             {
                 _refreshTimer?.Dispose();
-                
+
                 _refreshTimer = new System.Threading.Timer(_ =>
                 {
                     Application.Current.Dispatcher.BeginInvoke(() =>
@@ -347,22 +349,22 @@ namespace AdbInstallerApp.ViewModels
         //         MessageBox.Show("Please enter a group name.", "Create Group", MessageBoxButton.OK, MessageBoxImage.Warning);
         //         return;
         //     }
-            
+
         //     if (ApkGroups.Any(g => g.Name.Equals(NewGroupName.Trim(), StringComparison.OrdinalIgnoreCase)))
         //     {
         //         MessageBox.Show("A group with this name already exists.", "Create Group", MessageBoxButton.OK, MessageBoxImage.Warning);
         //         return;
         //     }
-            
+
         //     try
         //     {
         //         var group = new ApkGroup(NewGroupName.Trim(), NewGroupDescription.Trim());
         //         var groupViewModel = new ApkGroupViewModel(group);
         //         ApkGroups.Add(groupViewModel);
-                
+
         //         NewGroupName = string.Empty;
         //         NewGroupDescription = string.Empty;
-                
+
         //         AppendLog($"✅ Created group: {group.Name}");
         //         RefreshComputedProperties();
         //         SaveApkGroups();
@@ -373,18 +375,18 @@ namespace AdbInstallerApp.ViewModels
         //         MessageBox.Show($"Error creating group: {ex.Message}", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
         //     }
         // }
-        
+
         [RelayCommand]
         private void DeleteGroup(ApkGroupViewModel? group)
         {
             if (group == null) return;
-            
+
             var result = MessageBox.Show(
                 $"Are you sure you want to delete the group '{group.Name}'?\n\nThis will not delete the APK files, only remove them from the group.",
                 "Delete Group",
                 MessageBoxButton.YesNo,
                 MessageBoxImage.Question);
-                
+
             if (result == MessageBoxResult.Yes)
             {
                 try
@@ -395,7 +397,7 @@ namespace AdbInstallerApp.ViewModels
                     {
                         SelectedGroup = null;
                     }
-                    
+
                     AppendLog($"🗑️ Deleted group: {group.Name}");
                     RefreshComputedProperties();
                     SaveApkGroups();
@@ -406,19 +408,19 @@ namespace AdbInstallerApp.ViewModels
                 }
             }
         }
-        
+
         [RelayCommand]
         private void AddSelectedApksToGroup(ApkGroupViewModel? group)
         {
             if (group == null) return;
-            
+
             var selectedApks = ApkFiles.Where(a => a.IsSelected).ToList();
             if (selectedApks.Count == 0)
             {
                 MessageBox.Show("Please select some APK files to add to the group.", "Add to Group", MessageBoxButton.OK, MessageBoxImage.Information);
                 return;
             }
-            
+
             try
             {
                 int added = 0;
@@ -430,14 +432,14 @@ namespace AdbInstallerApp.ViewModels
                         added++;
                     }
                 }
-                
+
                 AppendLog($"➕ Added {added} APK(s) to group '{group.Name}'");
                 RefreshComputedProperties();
                 SaveApkGroups();
-                
+
                 if (added < selectedApks.Count)
                 {
-                    MessageBox.Show($"Added {added} APK(s) to the group. {selectedApks.Count - added} were already in the group.", 
+                    MessageBox.Show($"Added {added} APK(s) to the group. {selectedApks.Count - added} were already in the group.",
                         "Add to Group", MessageBoxButton.OK, MessageBoxImage.Information);
                 }
             }
@@ -446,16 +448,16 @@ namespace AdbInstallerApp.ViewModels
                 AppendLog($"❌ Error adding APKs to group: {ex.Message}");
             }
         }
-        
+
         [RelayCommand]
         private void RemoveApkFromGroup(object? parameter)
         {
             if (parameter is not object[] parameters || parameters.Length != 2)
                 return;
-                
+
             if (parameters[0] is not ApkGroupViewModel group || parameters[1] is not ApkItemViewModel apk)
                 return;
-                
+
             try
             {
                 group.RemoveApk(apk);
@@ -468,13 +470,13 @@ namespace AdbInstallerApp.ViewModels
                 AppendLog($"❌ Error removing APK from group: {ex.Message}");
             }
         }
-        
+
         [RelayCommand]
         private void DeleteSelectedApksFromGroup(object? parameter)
         {
             if (parameter is not ApkGroupViewModel group)
                 return;
-                
+
             try
             {
                 var selectedApks = group.ApkItems.Where(a => a.IsSelected).ToList();
@@ -483,12 +485,12 @@ namespace AdbInstallerApp.ViewModels
                     AppendLog("ℹ️ No APKs selected for deletion");
                     return;
                 }
-                
+
                 foreach (var apk in selectedApks)
                 {
                     group.RemoveApk(apk);
                 }
-                
+
                 AppendLog($"🗑️ Deleted {selectedApks.Count} APK(s) from group '{group.Name}'");
                 RefreshComputedProperties();
                 SaveApkGroups();
@@ -498,7 +500,7 @@ namespace AdbInstallerApp.ViewModels
                 AppendLog($"❌ Error deleting selected APKs from group: {ex.Message}");
             }
         }
-        
+
         [RelayCommand]
         private void ToggleGroupsView()
         {
@@ -564,7 +566,7 @@ namespace AdbInstallerApp.ViewModels
                             apk.IsSelected = true;
                         }
                     }
-                    
+
                     // Also select APKs in groups if in groups view
                     if (ShowGroupsView)
                     {
@@ -574,7 +576,7 @@ namespace AdbInstallerApp.ViewModels
                         }
                     }
                 });
-                
+
                 Application.Current.Dispatcher.BeginInvoke(() =>
                 {
                     try
@@ -607,14 +609,14 @@ namespace AdbInstallerApp.ViewModels
                             apk.IsSelected = false;
                         }
                     }
-                    
+
                     // Also clear selection in groups
                     foreach (var group in ApkGroups)
                     {
                         group.ClearApkSelection();
                     }
                 });
-                
+
                 Application.Current.Dispatcher.BeginInvoke(() =>
                 {
                     try
@@ -644,13 +646,13 @@ namespace AdbInstallerApp.ViewModels
                     AppendLog("ℹ️ No APKs selected for deletion");
                     return;
                 }
-                
+
                 var result = MessageBox.Show(
                     $"Are you sure you want to delete {selectedApks.Count} selected APK(s)?\n\nThis action cannot be undone.",
                     "Delete Selected APKs",
                     MessageBoxButton.YesNo,
                     MessageBoxImage.Warning);
-                
+
                 if (result == MessageBoxResult.Yes)
                 {
                     foreach (var apk in selectedApks)
@@ -668,13 +670,13 @@ namespace AdbInstallerApp.ViewModels
                             AppendLog($"❌ Error deleting {apk.DisplayInfo}: {ex.Message}");
                         }
                     }
-                    
+
                     // Remove from collection
                     foreach (var apk in selectedApks)
                     {
                         ApkFiles.Remove(apk);
                     }
-                    
+
                     // Also remove from groups
                     foreach (var group in ApkGroups)
                     {
@@ -684,7 +686,7 @@ namespace AdbInstallerApp.ViewModels
                             group.RemoveApk(apk);
                         }
                     }
-                    
+
                     AppendLog($"✅ Successfully deleted {selectedApks.Count} APK file(s)");
                     RefreshComputedProperties();
                     SaveApkGroups();
@@ -695,42 +697,42 @@ namespace AdbInstallerApp.ViewModels
                 AppendLog($"❌ Error deleting selected APKs: {ex.Message}");
             }
         }
-        
+
         [RelayCommand]
         private async Task InstallOnSelectedAsync()
         {
             var selDevices = Devices.Where(d => d.IsSelected).Select(d => d.Model).ToList();
             var selApks = GetSelectedApks();
-            
-            if (selDevices.Count == 0) 
-            { 
-                AppendLog("[INFO] No device selected."); 
-                return; 
+
+            if (selDevices.Count == 0)
+            {
+                AppendLog("[INFO] No device selected.");
+                return;
             }
-            
-            if (selApks.Count == 0) 
-            { 
-                AppendLog("[INFO] No APK selected."); 
-                return; 
+
+            if (selApks.Count == 0)
+            {
+                AppendLog("[INFO] No APK selected.");
+                return;
             }
 
             AppendLog($"Starting install on {selDevices.Count} device(s) with {selApks.Count} APK(s)...");
             await _installer.InstallAsync(selDevices, selApks, OptReinstall, OptGrantPerms, OptDowngrade, AppendLog);
         }
-        
+
         private List<ApkItem> GetSelectedApks()
         {
             var selectedApks = new List<ApkItem>();
-            
+
             // Add selected APKs from main list
             selectedApks.AddRange(ApkFiles.Where(a => a.IsSelected).Select(a => a.Model));
-            
+
             // Add selected APKs from groups
             foreach (var group in ApkGroups)
             {
                 selectedApks.AddRange(group.ApkItems.Where(a => a.IsSelected).Select(a => a.Model));
             }
-            
+
             return selectedApks.Distinct().ToList();
         }
 
@@ -748,7 +750,7 @@ namespace AdbInstallerApp.ViewModels
             JsonSettings.Save(_settings);
             SaveApkGroups();
         }
-        
+
         // APK Groups persistence
         private void LoadApkGroups()
         {
@@ -756,12 +758,12 @@ namespace AdbInstallerApp.ViewModels
             {
                 var groupsPath = GetGroupsFilePath();
                 AppendLog($"🔍 Loading groups from: {groupsPath}");
-                
+
                 if (File.Exists(groupsPath))
                 {
                     var json = File.ReadAllText(groupsPath);
                     var groups = JsonConvert.DeserializeObject<List<ApkGroup>>(json);
-                    
+
                     if (groups != null)
                     {
                         ApkGroups.Clear();
@@ -772,7 +774,7 @@ namespace AdbInstallerApp.ViewModels
                             AppendLog($"  ✅ Loaded group: {group.Name} with {group.ApkItems?.Count ?? 0} APKs");
                         }
                         AppendLog($"✅ Loaded {groups.Count} APK group(s)");
-                        
+
                         // Auto-switch to groups view if groups exist
                         if (groups.Count > 0 && CurrentModule == "ApkFiles")
                         {
@@ -790,16 +792,16 @@ namespace AdbInstallerApp.ViewModels
                 {
                     AppendLog("⚠️ Groups file not found, starting with empty groups");
                 }
-                
+
                 // Debug: Log trạng thái hiện tại
                 AppendLog($" Current state: {ApkGroups.Count} groups in collection");
-                
+
                 // Force UI update đầy đủ
                 OnPropertyChanged(nameof(ApkGroups));
                 OnPropertyChanged(nameof(ShowGroupsView));
                 OnPropertyChanged(nameof(ApkGroupsCountText));
                 OnPropertyChanged(nameof(StatusBarText));
-                
+
                 // Force refresh computed properties
                 RefreshComputedProperties();
             }
@@ -808,7 +810,7 @@ namespace AdbInstallerApp.ViewModels
                 AppendLog($"⚠️ Error loading APK groups: {ex.Message}");
             }
         }
-        
+
         private void SaveApkGroups()
         {
             try
@@ -816,13 +818,13 @@ namespace AdbInstallerApp.ViewModels
                 var groups = ApkGroups.Select(g => g.Model).ToList();
                 var json = JsonConvert.SerializeObject(groups, Formatting.Indented);
                 var groupsPath = GetGroupsFilePath();
-                
+
                 var dir = Path.GetDirectoryName(groupsPath);
                 if (!string.IsNullOrEmpty(dir) && !Directory.Exists(dir))
                 {
                     Directory.CreateDirectory(dir);
                 }
-                
+
                 File.WriteAllText(groupsPath, json);
             }
             catch (Exception ex)
@@ -830,23 +832,23 @@ namespace AdbInstallerApp.ViewModels
                 AppendLog($"⚠️ Error saving APK groups: {ex.Message}");
             }
         }
-        
+
         private string GetGroupsFilePath()
         {
             return Path.Combine(
                 Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
                 "AdbInstallerApp", "apk-groups.json");
         }
-        
+
         // Navigation Commands (existing)
         [RelayCommand]
         private void NavigateToDevices() => CurrentModule = "Devices";
-        
+
         [RelayCommand]
-        private void NavigateToApkFiles() 
+        private void NavigateToApkFiles()
         {
             CurrentModule = "ApkFiles";
-            
+
             // Đảm bảo groups view được hiển thị nếu có groups
             if (ApkGroups.Count > 0)
             {
@@ -858,67 +860,67 @@ namespace AdbInstallerApp.ViewModels
                 ShowGroupsView = false;
                 AppendLog("📋 Switched to APK Files (no groups yet)");
             }
-            
+
             // Force UI update đầy đủ
             OnPropertyChanged(nameof(ShowGroupsView));
             OnPropertyChanged(nameof(ApkGroups));
             OnPropertyChanged(nameof(ApkGroupsCountText));
             OnPropertyChanged(nameof(StatusBarText));
-            
+
             // Force refresh computed properties
             RefreshComputedProperties();
         }
-        
+
         [RelayCommand]
         private void NavigateToInstallQueue() => CurrentModule = "InstallQueue";
-        
+
         [RelayCommand]
         private void NavigateToDeviceTools() => CurrentModule = "DeviceTools";
-        
+
         [RelayCommand]
         private void NavigateToWifiAdb() => CurrentModule = "WifiAdb";
-        
+
         [RelayCommand]
         private void NavigateToScreenshots() => CurrentModule = "Screenshots";
-        
+
         [RelayCommand]
         private void NavigateToLogcat() => CurrentModule = "Logcat";
-        
+
         [RelayCommand]
         private void NavigateToInstalledApps() => CurrentModule = "InstalledApps";
-        
+
         [RelayCommand]
         private void NavigateToReports() => CurrentModule = "Reports";
-        
+
         [RelayCommand]
         private void NavigateToSettings() => CurrentModule = "Settings";
-        
+
         // Additional Commands (existing)
         [RelayCommand]
         private void RefreshAll()
         {
             RefreshRepo();
         }
-        
+
         [RelayCommand]
         private void ShowStatus()
         {
             AppendLog("[INFO] Application Status: Ready");
         }
-        
+
         [RelayCommand]
         private void ShowHelp()
         {
             AppendLog("[INFO] Help: Select a module from the navigation panel to get started");
         }
-        
+
         [RelayCommand]
         private void SaveSettings()
         {
             PersistSettings();
             AppendLog("[INFO] Settings saved successfully");
         }
-        
+
         [RelayCommand]
         private void ResetToDefaults()
         {
@@ -927,7 +929,7 @@ namespace AdbInstallerApp.ViewModels
                 "Reset Settings",
                 MessageBoxButton.YesNo,
                 MessageBoxImage.Question);
-                
+
             if (result == MessageBoxResult.Yes)
             {
                 var defaultSettings = new AppSettings();
@@ -1036,7 +1038,7 @@ Current Device Status:
             try
             {
                 AppendLog($"Loading installed apps from {SelectedDeviceSerial}...");
-                
+
                 var options = new AppQueryOptions
                 {
                     OnlyUserApps = ShowUserAppsOnly,
@@ -1046,7 +1048,7 @@ Current Device Status:
                 };
 
                 var apps = await _appInventory.ListInstalledAppsAsync(SelectedDeviceSerial, options);
-                
+
                 Application.Current.Dispatcher.Invoke(() =>
                 {
                     InstalledApps.Clear();
@@ -1056,10 +1058,10 @@ Current Device Status:
                         appVM.PropertyChanged += OnInstalledAppPropertyChanged;
                         InstalledApps.Add(appVM);
                     }
-                    
+
                     RefreshInstalledAppsComputedProperties();
                 });
-                
+
                 AppendLog($"✅ Loaded {apps.Count} installed apps");
             }
             catch (Exception ex)
@@ -1082,7 +1084,7 @@ Current Device Status:
             RefreshInstalledAppsComputedProperties();
         }
 
-        [RelayCommand] 
+        [RelayCommand]
         private void ClearInstalledAppsSelection()
         {
             foreach (var app in InstalledApps)
@@ -1129,13 +1131,13 @@ Current Device Status:
             try
             {
                 AppendLog($"Starting export of {selectedApps.Count} app(s)...");
-                
+
                 var packageNames = selectedApps.Select(a => a.PackageName);
                 var progress = new Progress<string>(AppendLog);
-                
+
                 var result = await _apkExporter.ExportMultipleApksAsync(
                     SelectedDeviceSerial,
-                    packageNames, 
+                    packageNames,
                     ExportDirectory,
                     ExportIncludeSplits,
                     progress);
@@ -1191,33 +1193,33 @@ Current Device Status:
                 MessageBox.Show("Please enter a group name.", "Create Group", MessageBoxButton.OK, MessageBoxImage.Warning);
                 return;
             }
-            
+
             if (ApkGroups.Any(g => g.Name.Equals(NewGroupName.Trim(), StringComparison.OrdinalIgnoreCase)))
             {
                 MessageBox.Show("A group with this name already exists.", "Create Group", MessageBoxButton.OK, MessageBoxImage.Warning);
                 return;
             }
-            
+
             try
             {
                 var group = new ApkGroup(NewGroupName.Trim(), NewGroupDescription.Trim());
                 var groupViewModel = new ApkGroupViewModel(group);
                 ApkGroups.Add(groupViewModel);
-                
+
                 NewGroupName = string.Empty;
                 NewGroupDescription = string.Empty;
-                
+
                 AppendLog($"✅ Created group: {group.Name}");
-                
+
                 // Force UI updates
                 OnPropertyChanged(nameof(ApkGroups));
                 OnPropertyChanged(nameof(ApkGroupsCountText));
                 OnPropertyChanged(nameof(StatusBarText));
-                
+
                 // Auto-switch to groups view
                 ShowGroupsView = true;
                 OnPropertyChanged(nameof(ShowGroupsView));
-                
+
                 RefreshComputedProperties();
                 SaveApkGroups();
             }
@@ -1233,6 +1235,276 @@ Current Device Status:
         private void CancelCreateGroup()
         {
             ShowCreateGroupDialog = false;
+        }
+
+        [RelayCommand]
+        private async Task ValidateSelectedApksAsync()
+        {
+            var selectedApks = GetSelectedApks();
+            if (selectedApks.Count == 0)
+            {
+                AppendLog("[INFO] No APK files selected for validation");
+                return;
+            }
+
+            AppendLog($"🔍 Validating {selectedApks.Count} selected APK file(s)...");
+
+            foreach (var apk in selectedApks)
+            {
+                try
+                {
+                    AppendLog($"\n📱 Validating: {Path.GetFileName(apk.FilePath)}");
+                    
+                    var validationResult = await _apkValidator.ValidateApkAsync(apk.FilePath);
+                    
+                    if (validationResult.IsValid)
+                    {
+                        AppendLog($"✅ Valid APK");
+                        
+                        if (validationResult.ApkInfo != null)
+                        {
+                            var info = validationResult.ApkInfo;
+                            AppendLog($"   Package: {info.PackageName}");
+                            AppendLog($"   Version: {info.VersionName} ({info.VersionCode})");
+                            AppendLog($"   Min SDK: {info.MinSdkVersion}, Target SDK: {info.TargetSdkVersion}");
+                            AppendLog($"   Size: {FormatFileSize(info.FileSize)}");
+                            AppendLog($"   Has Splits: {info.HasSplits}");
+                            
+                            if (info.HasNativeLibraries)
+                            {
+                                AppendLog($"   Native Libraries: Yes");
+                                if (info.SupportedArchitectures.Count > 0)
+                                {
+                                    AppendLog($"   Supported Architectures: {string.Join(", ", info.SupportedArchitectures)}");
+                                }
+                                else
+                                {
+                                    AppendLog($"   ⚠️ Architecture could not be determined");
+                                }
+                            }
+                            else
+                            {
+                                AppendLog($"   Native Libraries: No (Universal APK)");
+                            }
+                            
+                            if (info.Permissions.Count > 0)
+                            {
+                                AppendLog($"   Permissions: {info.Permissions.Count}");
+                            }
+                        }
+                        
+                        if (validationResult.Warnings.Any())
+                        {
+                            AppendLog($"⚠️ Warnings:");
+                            foreach (var warning in validationResult.Warnings)
+                            {
+                                AppendLog($"   - {warning}");
+                            }
+                        }
+                    }
+                    else
+                    {
+                        AppendLog($"❌ Invalid APK: {validationResult.ErrorMessage}");
+                        
+                        if (validationResult.Warnings.Any())
+                        {
+                            AppendLog($"⚠️ Additional warnings:");
+                            foreach (var warning in validationResult.Warnings)
+                            {
+                                AppendLog($"   - {warning}");
+                            }
+                        }
+                    }
+                }
+                catch (Exception ex)
+                {
+                    AppendLog($"❌ Error validating {Path.GetFileName(apk.FilePath)}: {ex.Message}");
+                }
+            }
+            
+            AppendLog("\n🔍 APK validation completed");
+        }
+
+        [RelayCommand]
+        private async Task RepairSelectedApksAsync()
+        {
+            var selectedApks = GetSelectedApks();
+            if (selectedApks.Count == 0)
+            {
+                AppendLog("[INFO] No APK files selected for repair");
+                return;
+            }
+
+            AppendLog($"🔧 Attempting to repair {selectedApks.Count} selected APK file(s)...");
+
+            foreach (var apk in selectedApks)
+            {
+                try
+                {
+                    AppendLog($"\n🔧 Repairing: {Path.GetFileName(apk.FilePath)}");
+                    
+                    // First validate to see what's wrong
+                    var validationResult = await _apkValidator.ValidateApkAsync(apk.FilePath);
+                    
+                    if (validationResult.IsValid)
+                    {
+                        AppendLog($"✅ APK is already valid, no repair needed");
+                        continue;
+                    }
+                    
+                    // Create repair path
+                    var repairDir = Path.Combine(Path.GetDirectoryName(apk.FilePath)!, "repaired");
+                    Directory.CreateDirectory(repairDir);
+                    
+                    var repairPath = Path.Combine(repairDir, $"repaired_{Path.GetFileName(apk.FilePath)}");
+                    
+                    // Attempt repair
+                    var repairSuccess = await _apkValidator.TryRepairApkAsync(apk.FilePath, repairPath);
+                    
+                    if (repairSuccess)
+                    {
+                        AppendLog($"✅ Repair completed: {Path.GetFileName(repairPath)}");
+                        
+                        // Validate the repaired APK
+                        var repairedValidation = await _apkValidator.ValidateApkAsync(repairPath);
+                        if (repairedValidation.IsValid)
+                        {
+                            AppendLog($"✅ Repaired APK is now valid");
+                        }
+                        else
+                        {
+                            AppendLog($"⚠️ Repaired APK still has issues: {repairedValidation.ErrorMessage}");
+                        }
+                    }
+                    else
+                    {
+                        AppendLog($"❌ Failed to repair APK");
+                    }
+                }
+                catch (Exception ex)
+                {
+                    AppendLog($"❌ Error repairing {Path.GetFileName(apk.FilePath)}: {ex.Message}");
+                }
+            }
+            
+            AppendLog("\n🔧 APK repair completed");
+        }
+
+        private string FormatFileSize(long bytes)
+        {
+            if (bytes < 1024) return $"{bytes} B";
+            if (bytes < 1024 * 1024) return $"{bytes / 1024.0:F1} KB";
+            if (bytes < 1024 * 1024 * 1024) return $"{bytes / (1024.0 * 1024.0):F1} MB";
+            return $"{bytes / (1024.0 * 1024.0 * 1024.0):F1} GB";
+        }
+
+        [RelayCommand]
+        private async Task CheckArchitectureCompatibilityAsync()
+        {
+            var selectedApks = GetSelectedApks();
+            var selectedDevices = Devices.Where(d => d.IsSelected).ToList();
+            
+            if (selectedApks.Count == 0)
+            {
+                AppendLog("[INFO] No APK files selected for architecture compatibility check");
+                return;
+            }
+
+            if (selectedDevices.Count == 0)
+            {
+                AppendLog("[INFO] No devices selected for architecture compatibility check");
+                return;
+            }
+
+            AppendLog($"🔍 Checking architecture compatibility for {selectedApks.Count} APK(s) and {selectedDevices.Count} device(s)...");
+
+            foreach (var device in selectedDevices)
+            {
+                AppendLog($"\n📱 Device: {device.DisplayName}");
+                AppendLog($"   Architecture: {device.Model.Abi ?? "Unknown"}");
+                AppendLog($"   Android: {device.Model.AndroidVersion} (API {device.Model.Sdk})");
+                
+                foreach (var apk in selectedApks)
+                {
+                    try
+                    {
+                        AppendLog($"\n   📦 APK: {Path.GetFileName(apk.FilePath)}");
+                        
+                        var validationResult = await _apkValidator.ValidateApkAsync(apk.FilePath);
+                        
+                        if (validationResult.IsValid && validationResult.ApkInfo != null)
+                        {
+                            var info = validationResult.ApkInfo;
+                            
+                            if (info.HasNativeLibraries)
+                            {
+                                if (info.SupportedArchitectures.Count > 0)
+                                {
+                                    var deviceArch = device.Model.Abi?.ToLower();
+                                    var isCompatible = false;
+                                    
+                                    if (!string.IsNullOrEmpty(deviceArch))
+                                    {
+                                        // Check for architecture compatibility
+                                        isCompatible = CheckArchitectureCompatibility(deviceArch, info.SupportedArchitectures);
+                                    }
+                                    
+                                    if (isCompatible)
+                                    {
+                                        AppendLog($"      ✅ Compatible: Device {deviceArch} is supported");
+                                    }
+                                    else
+                                    {
+                                        AppendLog($"      ❌ Incompatible: Device {deviceArch} not supported");
+                                        AppendLog($"         APK supports: {string.Join(", ", info.SupportedArchitectures)}");
+                                        AppendLog($"         💡 Solution: Find APK for {deviceArch} architecture or use universal APK");
+                                    }
+                                }
+                                else
+                                {
+                                    AppendLog($"      ⚠️ Warning: Architecture could not be determined");
+                                }
+                            }
+                            else
+                            {
+                                AppendLog($"      ✅ Universal APK: No architecture-specific libraries");
+                            }
+                        }
+                        else
+                        {
+                            AppendLog($"      ❌ APK validation failed: {validationResult.ErrorMessage}");
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        AppendLog($"      ❌ Error checking compatibility: {ex.Message}");
+                    }
+                }
+            }
+            
+            AppendLog("\n🔍 Architecture compatibility check completed");
+        }
+
+        private static bool CheckArchitectureCompatibility(string deviceArch, List<string> supportedArchs)
+        {
+            // Map device architectures to APK architectures
+            var archMapping = new Dictionary<string, string[]>
+            {
+                ["arm64-v8a"] = new[] { "arm64-v8a" },
+                ["armeabi-v7a"] = new[] { "armeabi-v7a", "armeabi" },
+                ["armeabi"] = new[] { "armeabi" },
+                ["x86_64"] = new[] { "x86_64", "x86" },
+                ["x86"] = new[] { "x86" },
+                ["mips64"] = new[] { "mips64", "mips" },
+                ["mips"] = new[] { "mips" }
+            };
+
+            if (archMapping.TryGetValue(deviceArch, out var compatibleArchs))
+            {
+                return supportedArchs.Any(apkArch => compatibleArchs.Contains(apkArch));
+            }
+
+            return false;
         }
     }
 }

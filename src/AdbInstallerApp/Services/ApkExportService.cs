@@ -8,26 +8,26 @@ namespace AdbInstallerApp.Services
     public sealed class ApkExportService
     {
         private readonly AdbService _adb;
-        
+
         public ApkExportService(AdbService adb)
         {
             _adb = adb ?? throw new ArgumentNullException(nameof(adb));
         }
 
         public async Task<ExportResult> ExportApkAsync(
-            string serial, 
-            string packageName, 
-            string destDir, 
+            string serial,
+            string packageName,
+            string destDir,
             bool includeSplits,
-            IProgress<TransferProgress>? progress, 
+            IProgress<TransferProgress>? progress,
             CancellationToken ct = default)
         {
             if (string.IsNullOrEmpty(serial))
                 throw new ArgumentException("Serial cannot be null or empty", nameof(serial));
-            
+
             if (string.IsNullOrEmpty(packageName))
                 throw new ArgumentException("Package name cannot be null or empty", nameof(packageName));
-            
+
             if (string.IsNullOrEmpty(destDir))
                 throw new ArgumentException("Destination directory cannot be null or empty", nameof(destDir));
 
@@ -39,7 +39,7 @@ namespace AdbInstallerApp.Services
                 var paths = await GetPackagePathsAsync(serial, packageName, ct);
                 if (paths.Count == 0)
                 {
-                    return new ExportResult(packageName, Array.Empty<string>(), false, 
+                    return new ExportResult(packageName, Array.Empty<string>(), false,
                         $"No APK paths found for package {packageName}");
                 }
 
@@ -56,7 +56,7 @@ namespace AdbInstallerApp.Services
                 for (int i = 0; i < pathsToExport.Count; i++)
                 {
                     ct.ThrowIfCancellationRequested();
-                    
+
                     var remotePath = pathsToExport[i];
                     var localFileName = InferLocalApkName(remotePath, i, packageName);
                     var localPath = Path.Combine(pkgFolder, localFileName);
@@ -64,7 +64,7 @@ namespace AdbInstallerApp.Services
                     progress?.Report(new TransferProgress(remotePath, localPath, 0, 100, 0));
 
                     var success = await PullApkAsync(serial, remotePath, localPath, progress, ct);
-                    
+
                     if (success && File.Exists(localPath))
                     {
                         exportedPaths.Add(localPath);
@@ -80,7 +80,7 @@ namespace AdbInstallerApp.Services
                         }
                         else
                         {
-                            return new ExportResult(packageName, exportedPaths.ToList(), false, 
+                            return new ExportResult(packageName, exportedPaths.ToList(), false,
                                 $"Failed to export {remotePath}. Possible permission denied.");
                         }
                     }
@@ -112,11 +112,11 @@ namespace AdbInstallerApp.Services
             {
                 ct.ThrowIfCancellationRequested();
                 var packageName = packages[i];
-                
+
                 progressLog?.Report($"[{i + 1}/{packages.Count}] Exporting {packageName}...");
 
                 var result = await ExportApkAsync(serial, packageName, destDir, includeSplits, null, ct);
-                
+
                 if (result.Success)
                 {
                     allExportedPaths.AddRange(result.ExportedPaths);
@@ -131,9 +131,9 @@ namespace AdbInstallerApp.Services
 
             var finalSuccess = allExportedPaths.Count > 0;
             var finalMessage = errors.Count > 0 ? string.Join("; ", errors) : null;
-            
+
             progressLog?.Report($"Export completed. {allExportedPaths.Count} file(s) exported successfully.");
-            
+
             return new ExportResult("Multiple", allExportedPaths, finalSuccess, finalMessage);
         }
 
@@ -151,7 +151,7 @@ namespace AdbInstallerApp.Services
             if (string.IsNullOrWhiteSpace(output)) return paths;
 
             var lines = output.Split('\n', StringSplitOptions.RemoveEmptyEntries);
-            
+
             foreach (var line in lines)
             {
                 var trimmed = line.Trim();
@@ -165,9 +165,9 @@ namespace AdbInstallerApp.Services
         }
 
         private async Task<bool> PullApkAsync(
-            string serial, 
-            string remotePath, 
-            string localPath, 
+            string serial,
+            string remotePath,
+            string localPath,
             IProgress<TransferProgress>? progress,
             CancellationToken ct)
         {
@@ -193,31 +193,31 @@ namespace AdbInstallerApp.Services
         }
 
         private async Task<bool> TryAlternativePullAsync(
-            string serial, 
-            string remotePath, 
+            string serial,
+            string remotePath,
             string localPath,
             CancellationToken ct)
         {
             // Try run-as method for debuggable apps (limited use case)
             // This is a fallback that rarely works but worth trying
-            
+
             try
             {
                 var tempPath = $"/sdcard/temp_export_{Path.GetFileName(localPath)}";
-                
+
                 // Try to copy to sdcard first (if we have permission)
                 var copyCmd = $"-s {serial} shell cp \"{remotePath}\" \"{tempPath}\"";
                 var (copyCode, _, _) = await ProcessRunner.RunAsync(_adb.AdbPath, copyCmd, timeoutMs: 30000);
-                
+
                 if (copyCode == 0)
                 {
                     // Pull from sdcard
                     var pullCmd = $"-s {serial} pull \"{tempPath}\" \"{localPath}\"";
                     var (pullCode, _, _) = await ProcessRunner.RunAsync(_adb.AdbPath, pullCmd, timeoutMs: 30000);
-                    
+
                     // Cleanup
                     _ = ProcessRunner.RunAsync(_adb.AdbPath, $"-s {serial} shell rm \"{tempPath}\"", timeoutMs: 5000);
-                    
+
                     return pullCode == 0 && File.Exists(localPath) && new FileInfo(localPath).Length > 0;
                 }
             }
@@ -232,13 +232,13 @@ namespace AdbInstallerApp.Services
         private static string InferLocalApkName(string remotePath, int index, string packageName)
         {
             var fileName = Path.GetFileName(remotePath);
-            
+
             // If it's clearly a split APK
             if (fileName.Contains("split_") || fileName.Contains("config."))
             {
                 return fileName; // Keep original split name
             }
-            
+
             // For base APK or unclear names
             if (index == 0)
             {

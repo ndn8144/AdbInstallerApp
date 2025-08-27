@@ -40,7 +40,7 @@ namespace AdbInstallerApp.Models
             // Example: "[  50%] /data/app/com.example/base.apk"
             var lines = adbOutput.Split('\n', StringSplitOptions.RemoveEmptyEntries);
             var lastProgressLine = lines.LastOrDefault(l => l.Contains('%'));
-            
+
             if (lastProgressLine != null && lastProgressLine.Contains('[') && lastProgressLine.Contains('%'))
             {
                 var percentStart = lastProgressLine.IndexOf('[') + 1;
@@ -54,7 +54,7 @@ namespace AdbInstallerApp.Models
                     }
                 }
             }
-            
+
             return new TransferProgress(remotePath, localPath, 0, 100, 0);
         }
     }

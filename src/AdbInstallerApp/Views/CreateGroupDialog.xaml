@@ -108,7 +108,8 @@
                          Style="{StaticResource ModernTextBoxStyle}"
                          MaxLength="100"
                          GotFocus="TextBox_GotFocus"
-                         LostFocus="TextBox_LostFocus"/>
+                         LostFocus="TextBox_LostFocus"
+                         TextChanged="TextBox_TextChanged"/>
                 <TextBlock Text="{Binding GroupName.Length, StringFormat='{}{0}/100 characters'}" 
                            FontSize="14" 
                            Foreground="#999"
@@ -149,10 +150,11 @@
                     Style="{StaticResource ModernButtonStyle}"
                     Click="CancelButton_Click"
                     Margin="0,0,12,0"/>
-            <Button Content="Create Group" 
+            <Button x:Name="CreateGroupButton"
+                    Content="Create Group" 
                     Style="{StaticResource AccentButtonStyle}"
                     Click="ConfirmButton_Click"
-                    IsEnabled="{Binding GroupName, Converter={StaticResource StringToBooleanConverter}}"/>
+                    IsEnabled="{Binding IsGroupNameValid}"/>
         </StackPanel>
     </Grid>
 </Window>

@@ -2,6 +2,7 @@ using AdbInstallerApp.Helpers;
 using AdbInstallerApp.Models;
 using System.Text.RegularExpressions;
 using System.IO;
+using AdbInstallerApp.Services; // Added for ApkValidationService
 
 
 namespace AdbInstallerApp.Services
@@ -34,7 +35,7 @@ namespace AdbInstallerApp.Services
             var (code, stdout, _) = await ProcessRunner.RunAsync(_adbPath, "devices");
             if (code != 0) return list;
 
-            var lines = stdout.Split(new[] {"\r\n", "\n"}, StringSplitOptions.RemoveEmptyEntries);
+            var lines = stdout.Split(new[] { "\r\n", "\n" }, StringSplitOptions.RemoveEmptyEntries);
             foreach (var line in lines.Skip(1)) // skip header
             {
                 // Format: SERIAL\tSTATE
@@ -58,28 +59,28 @@ namespace AdbInstallerApp.Services
             {
                 // Get device properties
                 await GetDevicePropertiesAsync(device);
-                
+
                 // Get hardware information
                 await GetHardwareInfoAsync(device);
-                
+
                 // Get network information
                 await GetNetworkInfoAsync(device);
-                
+
                 // Get display information
                 await GetDisplayInfoAsync(device);
-                
+
                 // Get security information
                 await GetSecurityInfoAsync(device);
-                
+
                 // Get runtime information
                 await GetRuntimeInfoAsync(device);
-                
+
                 // Get temperature and sensor information
                 await GetSensorInfoAsync(device);
-                
+
                 // Get developer options status
                 await GetDeveloperOptionsStatusAsync(device);
-                
+
                 // Perform troubleshooting checks
                 PerformTroubleshootingChecksAsync(device);
             }
@@ -94,12 +95,12 @@ namespace AdbInstallerApp.Services
             var (code, stdout, _) = await ProcessRunner.RunAsync(_adbPath, $"-s {device.Serial} shell getprop");
             if (code == 0)
             {
-                var lines = stdout.Split(new[] {"\r\n", "\n"}, StringSplitOptions.RemoveEmptyEntries);
+                var lines = stdout.Split(new[] { "\r\n", "\n" }, StringSplitOptions.RemoveEmptyEntries);
                 foreach (var line in lines)
                 {
                     if (line.Contains(": "))
                     {
-                        var parts = line.Split(new[] {": "}, 2, StringSplitOptions.None);
+                        var parts = line.Split(new[] { ": " }, 2, StringSplitOptions.None);
                         if (parts.Length == 2)
                         {
                             var key = parts[0].Trim();
@@ -125,63 +126,63 @@ namespace AdbInstallerApp.Services
                                 case "[ro.product.cpu.abi]":
                                     device.Abi = value;
                                     break;
-                                                                 case "[ro.sf.lcd_density]":
-                                     device.Density = value;
-                                     device.LcdDensity = value;
-                                     break;
-                                 case "[ro.build.display.id]":
-                                     device.BuildNumber = value;
-                                     break;
-                                 
-                                 // System Build Information
-                                 case "[ro.build.fingerprint]":
-                                     device.BuildFingerprint = value;
-                                     break;
-                                 case "[ro.build.date]":
-                                     device.BuildDate = value;
-                                     break;
-                                 case "[ro.build.user]":
-                                     device.BuildUser = value;
-                                     break;
-                                 case "[ro.build.host]":
-                                     device.BuildHost = value;
-                                     break;
-                                 case "[ro.build.tags]":
-                                     device.BuildTags = value;
-                                     break;
-                                 case "[ro.debuggable]":
-                                     device.IsDebuggable = value == "1";
-                                     break;
-                                 case "[ro.secure]":
-                                     device.IsSecure = value == "1";
-                                     break;
-                                 case "[ro.build.type]":
-                                     device.BuildType = value;
-                                     break;
-                                 
-                                 // Hardware & Performance
-                                 case "[ro.product.cpu.abilist]":
-                                     device.SupportedAbis = value;
-                                     break;
-                                 case "[ro.product.cpu.abilist32]":
-                                     device.SupportedAbis32 = value;
-                                     break;
-                                 case "[ro.product.cpu.abilist64]":
-                                     device.SupportedAbis64 = value;
-                                     break;
-                                 
-                                 // Display & Graphics
-                                 case "[debug.egl.hw]":
-                                     device.HasHardwareAcceleration = value == "1";
-                                     break;
-                                 
-                                 // Security & Permissions
-                                 case "[ro.crypto.state]":
-                                     device.EncryptionState = value;
-                                     break;
-                                 case "[vold.decrypt]":
-                                     device.DecryptionStatus = value;
-                                     break;
+                                case "[ro.sf.lcd_density]":
+                                    device.Density = value;
+                                    device.LcdDensity = value;
+                                    break;
+                                case "[ro.build.display.id]":
+                                    device.BuildNumber = value;
+                                    break;
+
+                                // System Build Information
+                                case "[ro.build.fingerprint]":
+                                    device.BuildFingerprint = value;
+                                    break;
+                                case "[ro.build.date]":
+                                    device.BuildDate = value;
+                                    break;
+                                case "[ro.build.user]":
+                                    device.BuildUser = value;
+                                    break;
+                                case "[ro.build.host]":
+                                    device.BuildHost = value;
+                                    break;
+                                case "[ro.build.tags]":
+                                    device.BuildTags = value;
+                                    break;
+                                case "[ro.debuggable]":
+                                    device.IsDebuggable = value == "1";
+                                    break;
+                                case "[ro.secure]":
+                                    device.IsSecure = value == "1";
+                                    break;
+                                case "[ro.build.type]":
+                                    device.BuildType = value;
+                                    break;
+
+                                // Hardware & Performance
+                                case "[ro.product.cpu.abilist]":
+                                    device.SupportedAbis = value;
+                                    break;
+                                case "[ro.product.cpu.abilist32]":
+                                    device.SupportedAbis32 = value;
+                                    break;
+                                case "[ro.product.cpu.abilist64]":
+                                    device.SupportedAbis64 = value;
+                                    break;
+
+                                // Display & Graphics
+                                case "[debug.egl.hw]":
+                                    device.HasHardwareAcceleration = value == "1";
+                                    break;
+
+                                // Security & Permissions
+                                case "[ro.crypto.state]":
+                                    device.EncryptionState = value;
+                                    break;
+                                case "[vold.decrypt]":
+                                    device.DecryptionStatus = value;
+                                    break;
                             }
                         }
                     }
@@ -224,14 +225,14 @@ namespace AdbInstallerApp.Services
             if (batteryCode == 0)
             {
                 device.BatteryStatus = batteryOutput;
-                
+
                 // Extract battery level
                 var levelMatch = Regex.Match(batteryOutput, @"level:\s*(\d+)");
                 if (levelMatch.Success)
                 {
                     device.BatteryLevel = levelMatch.Groups[1].Value;
                 }
-                
+
                 // Extract battery temperature
                 var tempMatch = Regex.Match(batteryOutput, @"temperature:\s*(\d+)");
                 if (tempMatch.Success)
@@ -239,7 +240,7 @@ namespace AdbInstallerApp.Services
                     var tempC = int.Parse(tempMatch.Groups[1].Value) / 10.0;
                     device.BatteryTemperature = $"{tempC:F1}";
                 }
-                
+
                 // Check if charging
                 device.IsCharging = batteryOutput.Contains("status: 2") || batteryOutput.Contains("AC powered: true");
             }
@@ -266,7 +267,7 @@ namespace AdbInstallerApp.Services
             if (wifiCode == 0)
             {
                 device.WifiInfo = wifiOutput;
-                
+
                 // Extract WiFi SSID
                 var ssidMatch = Regex.Match(wifiOutput, @"SSID:\s*""([^""]*)""");
                 if (ssidMatch.Success)
@@ -362,7 +363,7 @@ namespace AdbInstallerApp.Services
             var (packagesCode, packagesOutput, _) = await ProcessRunner.RunAsync(_adbPath, $"-s {device.Serial} shell pm list packages");
             if (packagesCode == 0)
             {
-                var packages = packagesOutput.Split(new[] {"\r\n", "\n"}, StringSplitOptions.RemoveEmptyEntries);
+                var packages = packagesOutput.Split(new[] { "\r\n", "\n" }, StringSplitOptions.RemoveEmptyEntries);
                 device.TotalPackages = packages.Length;
             }
 
@@ -370,7 +371,7 @@ namespace AdbInstallerApp.Services
             var (thirdPartyCode, thirdPartyOutput, _) = await ProcessRunner.RunAsync(_adbPath, $"-s {device.Serial} shell pm list packages -3");
             if (thirdPartyCode == 0)
             {
-                var thirdPartyPackages = thirdPartyOutput.Split(new[] {"\r\n", "\n"}, StringSplitOptions.RemoveEmptyEntries);
+                var thirdPartyPackages = thirdPartyOutput.Split(new[] { "\r\n", "\n" }, StringSplitOptions.RemoveEmptyEntries);
                 device.ThirdPartyPackages = thirdPartyPackages.Length;
             }
 
@@ -378,7 +379,7 @@ namespace AdbInstallerApp.Services
             var (systemCode, systemOutput, _) = await ProcessRunner.RunAsync(_adbPath, $"-s {device.Serial} shell pm list packages -s");
             if (systemCode == 0)
             {
-                var systemPackages = systemOutput.Split(new[] {"\r\n", "\n"}, StringSplitOptions.RemoveEmptyEntries);
+                var systemPackages = systemOutput.Split(new[] { "\r\n", "\n" }, StringSplitOptions.RemoveEmptyEntries);
                 device.SystemPackages = systemPackages.Length;
             }
 
@@ -386,7 +387,7 @@ namespace AdbInstallerApp.Services
             var (disabledCode, disabledOutput, _) = await ProcessRunner.RunAsync(_adbPath, $"-s {device.Serial} shell pm list packages -d");
             if (disabledCode == 0)
             {
-                var disabledPackages = disabledOutput.Split(new[] {"\r\n", "\n"}, StringSplitOptions.RemoveEmptyEntries);
+                var disabledPackages = disabledOutput.Split(new[] { "\r\n", "\n" }, StringSplitOptions.RemoveEmptyEntries);
                 device.DisabledPackages = disabledPackages.Length;
             }
 
@@ -479,36 +480,36 @@ namespace AdbInstallerApp.Services
         {
             // USB Connection Check
             device.UsbConnectionOk = device.State == "device";
-            
+
             // Driver Installation Check (basic check)
             device.DriverInstalled = device.State != "offline";
-            
+
             // ADB Authorization Check
             device.AdbAuthorized = device.State == "device";
-            
+
             // Device Compatibility Check
-            device.DeviceCompatible = !string.IsNullOrEmpty(device.Abi) && 
-                                    !string.IsNullOrEmpty(device.AndroidVersion) && 
+            device.DeviceCompatible = !string.IsNullOrEmpty(device.Abi) &&
+                                    !string.IsNullOrEmpty(device.AndroidVersion) &&
                                     !string.IsNullOrEmpty(device.Sdk);
-            
+
             // Connection Diagnosis
             var diagnosis = new List<string>();
-            
+
             if (!device.UsbConnectionOk)
             {
                 diagnosis.Add("USB connection failed");
             }
-            
+
             if (!device.DriverInstalled)
             {
                 diagnosis.Add("Driver not installed");
             }
-            
+
             if (!device.DeviceCompatible)
             {
                 diagnosis.Add("Device compatibility issues");
             }
-            
+
             if (diagnosis.Count == 0)
             {
                 device.ConnectionDiagnosis = "All checks passed";
@@ -521,18 +522,141 @@ namespace AdbInstallerApp.Services
 
         public async Task<(bool ok, string log)> InstallSingleAsync(string serial, string apkPath, string opts)
         {
+            // Validate APK file before installation
+            if (!File.Exists(apkPath))
+            {
+                return (false, $"APK file not found: {apkPath}");
+            }
+
+            var fileInfo = new FileInfo(apkPath);
+            if (fileInfo.Length == 0)
+            {
+                return (false, $"APK file is empty: {apkPath}");
+            }
+
+            // Use ApkValidationService for comprehensive validation
+            var validationService = new ApkValidationService();
+            var validationResult = await validationService.ValidateApkAsync(apkPath);
+            
+            if (!validationResult.IsValid)
+            {
+                var errorLog = $"[VALIDATION FAILED] {validationResult.ErrorMessage}\n";
+                if (validationResult.Warnings.Any())
+                {
+                    errorLog += "[WARNINGS]\n" + string.Join("\n", validationResult.Warnings.Select(w => $"  - {w}"));
+                }
+                return (false, errorLog);
+            }
+
+            // Log warnings if any
+            if (validationResult.Warnings.Any())
+            {
+                var warningLog = "[WARNINGS] APK has some issues but may still install:\n";
+                warningLog += string.Join("\n", validationResult.Warnings.Select(w => $"  - {w}"));
+                // Continue with installation despite warnings
+            }
+
             var args = $"-s {serial} install {opts} \"{apkPath}\"";
             var (code, so, se) = await ProcessRunner.RunAsync(_adbPath, args);
-            return (code == 0, so + se);
+            
+            // Enhanced error handling
+            var log = so + se;
+            if (code != 0)
+            {
+                log = $"[ERROR] Installation failed with exit code {code}\n{log}";
+                
+                // Provide specific error messages for common issues
+                if (log.Contains("INSTALL_FAILED_INVALID_APK"))
+                {
+                    log += "\n\n[SOLUTION] This APK file appears to be corrupted or invalid. Please:\n" +
+                           "1. Verify the APK file is not corrupted\n" +
+                           "2. Try downloading the APK again\n" +
+                           "3. Check if the APK is compatible with your device\n" +
+                           "4. Consider using the APK repair tool if available";
+                }
+                else if (log.Contains("INSTALL_FAILED_NO_MATCHING_ABIS"))
+                {
+                    log += "\n\n[SOLUTION] APK architecture mismatch. Please:\n" +
+                           "1. Check if APK supports your device's CPU architecture\n" +
+                           "2. Try finding a universal APK (supports multiple architectures)\n" +
+                           "3. Verify device architecture: ARM, ARM64, x86, or x86_64\n" +
+                           "4. Some APKs may need to be downloaded specifically for your device type";
+                }
+                else if (log.Contains("INSTALL_FAILED_OLDER_SDK"))
+                {
+                    log += "\n\n[SOLUTION] This APK requires a newer Android version. Please:\n" +
+                           "1. Update your device to a newer Android version\n" +
+                           "2. Or find an APK compatible with your current Android version";
+                }
+                else if (log.Contains("INSTALL_FAILED_USER_RESTRICTED"))
+                {
+                    log += "\n\n[SOLUTION] Installation blocked by device settings. Please:\n" +
+                           "1. Enable 'Install from unknown sources' in device settings\n" +
+                           "2. Disable 'Verify apps over USB' in Developer Options";
+                }
+            }
+            
+            return (code == 0, log);
         }
 
 
         public async Task<(bool ok, string log)> InstallMultipleAsync(string serial, IEnumerable<string> apkPaths, string opts)
         {
-            var joined = string.Join(" ", apkPaths.Select(p => $"\"{p}\""));
+            var apkList = apkPaths.ToList();
+            
+            // Validate all APK files before installation
+            var validationService = new ApkValidationService();
+            var validationResults = new List<(string path, ApkValidationService.ApkValidationResult result)>();
+            
+            foreach (var apkPath in apkList)
+            {
+                if (!File.Exists(apkPath))
+                {
+                    return (false, $"APK file not found: {apkPath}");
+                }
+
+                var fileInfo = new FileInfo(apkPath);
+                if (fileInfo.Length == 0)
+                {
+                    return (false, $"APK file is empty: {apkPath}");
+                }
+
+                var validationResult = await validationService.ValidateApkAsync(apkPath);
+                validationResults.Add((apkPath, validationResult));
+                
+                if (!validationResult.IsValid)
+                {
+                    var errorLog = $"[VALIDATION FAILED] {Path.GetFileName(apkPath)}: {validationResult.ErrorMessage}\n";
+                    if (validationResult.Warnings.Any())
+                    {
+                        errorLog += "[WARNINGS]\n" + string.Join("\n", validationResult.Warnings.Select(w => $"  - {w}"));
+                    }
+                    return (false, errorLog);
+                }
+            }
+
+            var joined = string.Join(" ", apkList.Select(p => $"\"{p}\""));
             var args = $"-s {serial} install-multiple {opts} {joined}";
             var (code, so, se) = await ProcessRunner.RunAsync(_adbPath, args);
-            return (code == 0, so + se);
+            
+            // Enhanced error handling for multiple APKs
+            var log = so + se;
+            if (code != 0)
+            {
+                log = $"[ERROR] Multiple APK installation failed with exit code {code}\n{log}";
+                
+                if (log.Contains("INSTALL_FAILED_INVALID_APK"))
+                {
+                    log += "\n\n[SOLUTION] One or more APK files appear to be corrupted. Please:\n" +
+                           "1. Verify all APK files are not corrupted\n" +
+                           "2. Try downloading the APKs again\n" +
+                           "3. Check if the APKs are compatible with your device\n" +
+                           "4. Consider installing APKs one by one to identify the problematic one\n" +
+                           "5. Consider using the APK repair tool if available";
+                }
+            }
+            
+            return (code == 0, log);
         }
     }
 }

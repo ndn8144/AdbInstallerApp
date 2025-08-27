@@ -8,7 +8,7 @@ namespace AdbInstallerApp.Helpers
     public static class ApkGroupHelper
     {
         // Predefined color palette for groups
-        public static readonly string[] GroupColors = 
+        public static readonly string[] GroupColors =
         {
             "#667eea", // Primary Blue
             "#764ba2", // Primary Purple  
@@ -75,7 +75,7 @@ namespace AdbInstallerApp.Helpers
         {
             var usedColors = existingGroups?.Select(g => g.Color).ToHashSet() ?? new HashSet<string>();
             var availableColors = GroupColors.Where(c => !usedColors.Contains(c)).ToArray();
-            
+
             if (availableColors.Length == 0)
                 availableColors = GroupColors; // Reuse colors if all are taken
 
@@ -92,7 +92,7 @@ namespace AdbInstallerApp.Helpers
                 return "New Group";
 
             var apkList = apkItems.ToList();
-            
+
             // Try to find common package name
             var packageNames = apkList
                 .Where(a => !string.IsNullOrEmpty(a.Model.Package))
@@ -106,14 +106,14 @@ namespace AdbInstallerApp.Helpers
                     .GroupBy(name => name)
                     .OrderByDescending(g => g.Count())
                     .First().Key;
-                
+
                 return CleanGroupName(mostCommon);
             }
 
             // Try to find common file name pattern
             var fileNames = apkList.Select(a => Path.GetFileNameWithoutExtension(a.FileName)).ToList();
             var commonPrefix = FindCommonPrefix(fileNames);
-            
+
             if (!string.IsNullOrEmpty(commonPrefix) && commonPrefix.Length > 3)
             {
                 return CleanGroupName(commonPrefix);
@@ -134,7 +134,7 @@ namespace AdbInstallerApp.Helpers
             // Remove common package prefixes
             var prefixes = new[] { "com.", "org.", "net.", "io.", "app." };
             var cleaned = packageName;
-            
+
             foreach (var prefix in prefixes)
             {
                 if (cleaned.StartsWith(prefix))
@@ -271,7 +271,7 @@ namespace AdbInstallerApp.Helpers
         public static GroupStatistics GetGroupStatistics(ApkGroupViewModel group)
         {
             var apks = group.ApkItems.ToList();
-            
+
             return new GroupStatistics
             {
                 TotalApks = apks.Count,
@@ -332,7 +332,7 @@ namespace AdbInstallerApp.Helpers
         public long AverageSize { get; set; }
         public DateTime CreatedDate { get; set; }
         public DateTime LastModified { get; set; }
-        
+
         public string TotalSizeText => FormatFileSize(TotalSize);
         public string SelectedSizeText => FormatFileSize(SelectedSize);
         public string AverageSizeText => FormatFileSize(AverageSize);
@@ -340,7 +340,7 @@ namespace AdbInstallerApp.Helpers
         private static string FormatFileSize(long bytes)
         {
             if (bytes == 0) return "0 B";
-            
+
             string[] sizes = { "B", "KB", "MB", "GB" };
             double len = bytes;
             int order = 0;

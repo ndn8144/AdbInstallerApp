@@ -7,10 +7,10 @@ namespace AdbInstallerApp.ViewModels
     public partial class InstalledAppViewModel : ObservableObject
     {
         public InstalledApp Model { get; }
-        
-        public InstalledAppViewModel(InstalledApp model) 
-        { 
-            Model = model ?? throw new ArgumentNullException(nameof(model)); 
+
+        public InstalledAppViewModel(InstalledApp model)
+        {
+            Model = model ?? throw new ArgumentNullException(nameof(model));
         }
 
         private bool _isSelected;
@@ -21,16 +21,16 @@ namespace AdbInstallerApp.ViewModels
         }
 
         public string PackageName => Model?.PackageName ?? "Unknown";
-        
+
         public string DisplayName => Model?.DisplayName ?? "Unknown App";
-        
+
         public string VersionInfo => Model?.VersionInfo ?? "Unknown";
-        
+
         public string AppType => Model?.AppType ?? "Unknown";
-        
-        public string SizeInfo 
-        { 
-            get 
+
+        public string SizeInfo
+        {
+            get
             {
                 if (Model?.TotalSizeBytes is long size && size > 0)
                 {
@@ -39,12 +39,12 @@ namespace AdbInstallerApp.ViewModels
                 return "Size unknown";
             }
         }
-        
+
         public string SplitInfo => Model?.SplitInfo ?? "Unknown";
-        
-        public string CodePathsText 
-        { 
-            get 
+
+        public string CodePathsText
+        {
+            get
             {
                 if (Model?.CodePaths != null && Model.CodePaths.Count > 0)
                 {
@@ -71,7 +71,7 @@ namespace AdbInstallerApp.ViewModels
         private static string FormatFileSize(long bytes)
         {
             if (bytes == 0) return "0 B";
-            
+
             string[] sizes = { "B", "KB", "MB", "GB" };
             double len = bytes;
             int order = 0;
@@ -82,7 +82,7 @@ namespace AdbInstallerApp.ViewModels
             }
             return $"{len:0.##} {sizes[order]}";
         }
-        
+
         public override string ToString()
         {
             return DisplayName;

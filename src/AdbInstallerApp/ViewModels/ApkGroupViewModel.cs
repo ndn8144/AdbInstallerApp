@@ -10,20 +10,20 @@ namespace AdbInstallerApp.ViewModels
     public partial class ApkGroupViewModel : ObservableObject
     {
         public ApkGroup Model { get; }
-        
+
         public ObservableCollection<ApkItemViewModel> ApkItems { get; } = new();
-        
+
         public ApkGroupViewModel(ApkGroup model)
         {
             Model = model ?? throw new ArgumentNullException(nameof(model));
-            
+
             // Subscribe to model's ApkItems changes
             Model.ApkItems.CollectionChanged += OnModelApkItemsChanged;
-            
+
             // Initialize APK ViewModels
             RefreshApkItems();
         }
-        
+
         private void OnModelApkItemsChanged(object? sender, System.Collections.Specialized.NotifyCollectionChangedEventArgs e)
         {
             Application.Current?.Dispatcher.Invoke(() =>
@@ -34,7 +34,7 @@ namespace AdbInstallerApp.ViewModels
                 OnPropertyChanged(nameof(GroupInfo));
             });
         }
-        
+
         private void RefreshApkItems()
         {
             try
@@ -45,7 +45,7 @@ namespace AdbInstallerApp.ViewModels
                     vm.PropertyChanged -= OnApkItemPropertyChanged;
                 }
                 ApkItems.Clear();
-                
+
                 // Add new ViewModels
                 foreach (var apk in Model.ApkItems)
                 {
@@ -53,7 +53,7 @@ namespace AdbInstallerApp.ViewModels
                     vm.PropertyChanged += OnApkItemPropertyChanged;
                     ApkItems.Add(vm);
                 }
-                
+
                 // Initialize group selection state
                 IsGroupSelected = AreAllApksSelected;
             }
@@ -62,7 +62,7 @@ namespace AdbInstallerApp.ViewModels
                 System.Diagnostics.Debug.WriteLine($"Error refreshing APK items: {ex.Message}");
             }
         }
-        
+
         private void OnApkItemPropertyChanged(object? sender, PropertyChangedEventArgs e)
         {
             if (e.PropertyName == nameof(ApkItemViewModel.IsSelected))
@@ -70,21 +70,21 @@ namespace AdbInstallerApp.ViewModels
                 OnPropertyChanged(nameof(SelectedApkCount));
                 OnPropertyChanged(nameof(IsAnyApkSelected));
                 OnPropertyChanged(nameof(AreAllApksSelected));
-                
+
                 // Update group selection state based on APK selection
                 IsGroupSelected = AreAllApksSelected;
             }
         }
 
         [ObservableProperty]
-        private bool _isExpanded = true;
+        private bool _isExpanded = false;
 
         [ObservableProperty]
         private bool _isSelected;
-        
+
         [ObservableProperty]
         private bool _isGroupSelected;
-        
+
         [RelayCommand]
         private void ToggleExpand()
         {
@@ -92,7 +92,7 @@ namespace AdbInstallerApp.ViewModels
         }
 
         public string Id => Model.Id;
-        
+
         public string Name
         {
             get => Model.Name;
@@ -106,7 +106,7 @@ namespace AdbInstallerApp.ViewModels
                 }
             }
         }
-        
+
         public string Description
         {
             get => Model.Description;
@@ -119,7 +119,7 @@ namespace AdbInstallerApp.ViewModels
                 }
             }
         }
-        
+
         public string Color
         {
             get => Model.Color;
@@ -132,29 +132,29 @@ namespace AdbInstallerApp.ViewModels
                 }
             }
         }
-        
+
         public DateTime CreatedAt => Model.CreatedAt;
-        
+
         public int ApkCount => Model.ApkCount;
-        
+
         public long TotalSize => Model.TotalSize;
-        
+
         public string TotalSizeText => FormatFileSize(TotalSize);
-        
+
         public string DisplayName => Model.DisplayName;
-        
+
         public string GroupInfo => Model.GroupInfo;
-        
+
         public int SelectedApkCount => ApkItems.Count(a => a.IsSelected);
-        
+
         public bool IsAnyApkSelected => ApkItems.Any(a => a.IsSelected);
-        
+
         public bool AreAllApksSelected => ApkItems.All(a => a.IsSelected);
-        
+
         public string CreatedAtText => Model.CreatedAtText;
-        
+
         // Commands will be handled by parent ViewModel (MainViewModel)
-        
+
         public void AddApk(ApkItemViewModel apkViewModel)
         {
             if (apkViewModel?.Model != null)
@@ -162,7 +162,7 @@ namespace AdbInstallerApp.ViewModels
                 Model.AddApk(apkViewModel.Model);
             }
         }
-        
+
         public void RemoveApk(ApkItemViewModel apkViewModel)
         {
             if (apkViewModel?.Model != null)
@@ -170,22 +170,22 @@ namespace AdbInstallerApp.ViewModels
                 Model.RemoveApk(apkViewModel.Model);
             }
         }
-        
+
         [RelayCommand]
         public void SelectAllApks()
         {
             // If all APKs are selected, deselect all. Otherwise, select all.
             bool shouldSelectAll = !AreAllApksSelected;
-            
+
             foreach (var apk in ApkItems)
             {
                 apk.IsSelected = shouldSelectAll;
             }
-            
+
             // Update group selection state
             IsGroupSelected = shouldSelectAll;
         }
-        
+
         [RelayCommand]
         public void ClearApkSelection()
         {
@@ -193,7 +193,7 @@ namespace AdbInstallerApp.ViewModels
             {
                 apk.IsSelected = false;
             }
-            
+
             // Update group selection state
             IsGroupSelected = false;
         }
@@ -207,7 +207,7 @@ namespace AdbInstallerApp.ViewModels
                 {
                     vm.PropertyChanged -= OnApkItemPropertyChanged;
                 }
-                
+
                 if (Model.ApkItems != null)
                 {
                     Model.ApkItems.CollectionChanged -= OnModelApkItemsChanged;
@@ -218,11 +218,11 @@ namespace AdbInstallerApp.ViewModels
                 System.Diagnostics.Debug.WriteLine($"Error disposing ApkGroupViewModel: {ex.Message}");
             }
         }
-        
+
         private static string FormatFileSize(long bytes)
         {
             if (bytes == 0) return "0 B";
-            
+
             string[] sizes = { "B", "KB", "MB", "GB" };
             double len = bytes;
             int order = 0;
@@ -233,7 +233,7 @@ namespace AdbInstallerApp.ViewModels
             }
             return $"{len:0.##} {sizes[order]}";
         }
-        
+
         public override string ToString()
         {
             return DisplayName;

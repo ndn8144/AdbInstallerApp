@@ -7,15 +7,15 @@ namespace AdbInstallerApp.Services
     public sealed class AppInventoryService
     {
         private readonly AdbService _adb;
-        
+
         public AppInventoryService(AdbService adb)
         {
             _adb = adb ?? throw new ArgumentNullException(nameof(adb));
         }
 
         public async Task<IReadOnlyList<InstalledApp>> ListInstalledAppsAsync(
-            string serial, 
-            AppQueryOptions opts, 
+            string serial,
+            AppQueryOptions opts,
             CancellationToken ct = default)
         {
             if (string.IsNullOrEmpty(serial))
@@ -25,14 +25,14 @@ namespace AdbInstallerApp.Services
             {
                 // 1) List packages (try modern cmd first, fallback to pm)
                 var packages = await ListPackagesAsync(serial, opts.UserId, ct);
-                
+
                 if (packages.Count == 0)
                     return Array.Empty<InstalledApp>();
 
                 // 2) Enrich with detailed info
                 var results = new List<InstalledApp>();
                 var semaphore = new SemaphoreSlim(3); // Limit concurrent requests
-                
+
                 var tasks = packages.Select(async pkg =>
                 {
                     await semaphore.WaitAsync(ct);
@@ -63,7 +63,7 @@ namespace AdbInstallerApp.Services
             // Try modern cmd package first  
             var cmd = $"-s {serial} shell cmd package list packages -f --user {userId}";
             var (code, output, _) = await ProcessRunner.RunAsync(_adb.AdbPath, cmd, timeoutMs: 15000);
-            
+
             if (code != 0 || string.IsNullOrWhiteSpace(output))
             {
                 // Fallback to pm
@@ -80,7 +80,7 @@ namespace AdbInstallerApp.Services
             if (string.IsNullOrWhiteSpace(output)) return packages;
 
             var lines = output.Split('\n', StringSplitOptions.RemoveEmptyEntries);
-            
+
             // Pattern: package:/data/app/.../base.apk=com.example.app
             var regex = new Regex(@"package:(.+?)=([a-zA-Z0-9_.]+)", RegexOptions.Compiled);
 
@@ -94,7 +94,7 @@ namespace AdbInstallerApp.Services
                 {
                     var path = match.Groups[1].Value;
                     var package = match.Groups[2].Value;
-                    
+
                     packages.Add(new PackageEntry(package, path));
                 }
             }
@@ -103,18 +103,18 @@ namespace AdbInstallerApp.Services
         }
 
         private async Task<InstalledApp?> EnrichPackageInfoAsync(
-            string serial, 
-            PackageEntry pkg, 
-            bool withSizes, 
+            string serial,
+            PackageEntry pkg,
+            bool withSizes,
             CancellationToken ct)
         {
             try
             {
                 // Get package paths (base + splits)
                 var paths = await GetPackagePathsAsync(serial, pkg.PackageName, ct);
-                
+
                 // Get package info from dumpsys
-                var (label, versionName, versionCode, isSystem) = 
+                var (label, versionName, versionCode, isSystem) =
                     await GetPackageDetailsAsync(serial, pkg.PackageName, ct);
 
                 // Get size if requested
@@ -143,8 +143,8 @@ namespace AdbInstallerApp.Services
         }
 
         private async Task<IReadOnlyList<string>> GetPackagePathsAsync(
-            string serial, 
-            string packageName, 
+            string serial,
+            string packageName,
             CancellationToken ct)
         {
             var cmd = $"-s {serial} shell pm path {packageName}";
@@ -159,7 +159,7 @@ namespace AdbInstallerApp.Services
             if (string.IsNullOrWhiteSpace(output)) return paths;
 
             var lines = output.Split('\n', StringSplitOptions.RemoveEmptyEntries);
-            
+
             foreach (var line in lines)
             {
                 var trimmed = line.Trim();
@@ -172,7 +172,7 @@ namespace AdbInstallerApp.Services
             return paths;
         }
 
-        private async Task<(string label, string versionName, long versionCode, bool isSystem)> 
+        private async Task<(string label, string versionName, long versionCode, bool isSystem)>
             GetPackageDetailsAsync(string serial, string packageName, CancellationToken ct)
         {
             var cmd = $"-s {serial} shell dumpsys package {packageName}";
@@ -192,11 +192,11 @@ namespace AdbInstallerApp.Services
                 return (label, versionName, versionCode, isSystem);
 
             var lines = output.Split('\n', StringSplitOptions.RemoveEmptyEntries);
-            
+
             foreach (var line in lines)
             {
                 var trimmed = line.Trim();
-                
+
                 // Application label
                 if (trimmed.StartsWith("applicationLabel="))
                 {
@@ -227,8 +227,8 @@ namespace AdbInstallerApp.Services
         }
 
         private async Task<long> CalculatePackageSizeAsync(
-            string serial, 
-            IReadOnlyList<string> paths, 
+            string serial,
+            IReadOnlyList<string> paths,
             CancellationToken ct)
         {
             long totalSize = 0;
@@ -272,7 +272,7 @@ namespace AdbInstallerApp.Services
             if (!string.IsNullOrWhiteSpace(opts.KeywordFilter))
             {
                 var keyword = opts.KeywordFilter.Trim().ToLowerInvariant();
-                filtered = filtered.Where(app => 
+                filtered = filtered.Where(app =>
                     app.PackageName.ToLowerInvariant().Contains(keyword) ||
                     app.Label.ToLowerInvariant().Contains(keyword));
             }

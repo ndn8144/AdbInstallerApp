@@ -12,7 +12,7 @@ namespace AdbInstallerApp.Converters
             {
                 return !boolValue;
             }
-            
+
             return false;
         }
 
@@ -22,7 +22,7 @@ namespace AdbInstallerApp.Converters
             {
                 return !boolValue;
             }
-            
+
             return false;
         }
     }

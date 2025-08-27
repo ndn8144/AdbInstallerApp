@@ -172,8 +172,8 @@ DispatcherUnhandledException="Application_DispatcherUnhandledException">
     <DropShadowEffect x:Key="CardShadow" 
                       Color="#20000000" 
                       Direction="270" 
-                      ShadowDepth="3" 
-                      BlurRadius="10" 
+                      ShadowDepth="2" 
+                      BlurRadius="12" 
                       Opacity="0.3"/>
     
     <!-- Modern DataGrid Header Style -->

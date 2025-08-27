@@ -93,12 +93,12 @@ namespace AdbInstallerApp.Models
         // Computed Properties
         public string CreatedAtText => DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss");
         public string LastUpdatedText => DateTime.Now.ToString("HH:mm:ss");
-        
+
         // Status Indicators
         public string ConnectionStatusIcon => State switch
         {
             "device" => "🟢",
-            "unauthorized" => "🟡", 
+            "unauthorized" => "🟡",
             "offline" => "🔴",
             _ => "⚪"
         };

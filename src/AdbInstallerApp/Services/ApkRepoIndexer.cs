@@ -44,7 +44,7 @@ namespace AdbInstallerApp.Services
                 {
                     var apkFiles = Directory.GetFiles(RepoPath, "*.apk");
                     var apkGroups = GroupApkFiles(apkFiles);
-                    
+
                     foreach (var group in apkGroups)
                     {
                         foreach (var apkFile in group)
@@ -105,13 +105,13 @@ namespace AdbInstallerApp.Services
                 return true;
 
             // Check for common split patterns
-            var splitPatterns = new[] { 
-                "arm64", "arm", "x86", "x86_64", 
+            var splitPatterns = new[] {
+                "arm64", "arm", "x86", "x86_64",
                 "xxhdpi", "xhdpi", "hdpi", "mdpi", "ldpi",
                 "nodpi", "tvdpi", "xxxhdpi",
                 "v7a", "v8a", "v21", "v22", "v23", "v24", "v25", "v26", "v27", "v28", "v29", "v30", "v31", "v32", "v33", "v34"
             };
-            
+
             foreach (var pattern in splitPatterns)
             {
                 if ((lowerBaseName.EndsWith("-" + pattern) && lowerOtherName.EndsWith("-" + pattern)) ||
@@ -122,7 +122,7 @@ namespace AdbInstallerApp.Services
             // Check if they share the same base name but have different suffixes
             var baseParts = lowerBaseName.Split('-');
             var otherParts = lowerOtherName.Split('-');
-            
+
             if (baseParts.Length > 1 && otherParts.Length > 1)
             {
                 // If they have the same first part (package name), they might be related
@@ -131,7 +131,7 @@ namespace AdbInstallerApp.Services
                     // Check if the difference is just a split identifier
                     var baseSuffix = string.Join("-", baseParts.Skip(1));
                     var otherSuffix = string.Join("-", otherParts.Skip(1));
-                    
+
                     // If one is empty (base APK) and the other has a suffix (split APK)
                     if (string.IsNullOrEmpty(baseSuffix) && !string.IsNullOrEmpty(otherSuffix))
                         return true;
@@ -190,16 +190,16 @@ namespace AdbInstallerApp.Services
         {
             // Convert to lowercase for case-insensitive comparison
             var lowerFileName = fileName.ToLowerInvariant();
-            
+
             // Common split APK patterns that indicate this is NOT a base APK
-            var splitPatterns = new[] { 
-                "arm64", "arm", "x86", "x86_64", 
+            var splitPatterns = new[] {
+                "arm64", "arm", "x86", "x86_64",
                 "xxhdpi", "xhdpi", "hdpi", "mdpi", "ldpi",
                 "nodpi", "tvdpi", "xxxhdpi",
                 "v7a", "v8a", "v21", "v22", "v23", "v24", "v25", "v26", "v27", "v28", "v29", "v30", "v31", "v32", "v33", "v34",
                 "universal", "multi", "split"
             };
-            
+
             // Check if filename contains any split patterns
             foreach (var pattern in splitPatterns)
             {
@@ -212,7 +212,7 @@ namespace AdbInstallerApp.Services
             {
                 var parts = lowerFileName.Split('-');
                 var lastPart = parts[parts.Length - 1];
-                
+
                 // If the last part looks like a split identifier, it's likely a split APK
                 if (lastPart.Length <= 6 && (lastPart.All(char.IsDigit) || lastPart.All(char.IsLetter)))
                 {
@@ -236,7 +236,7 @@ namespace AdbInstallerApp.Services
             {
                 var secondPart = dashParts[1];
                 // Check if second part looks like a version number
-                if (secondPart.Contains(".") || secondPart.All(char.IsDigit) || 
+                if (secondPart.Contains(".") || secondPart.All(char.IsDigit) ||
                     (secondPart.StartsWith("v") && secondPart.Substring(1).All(char.IsDigit)))
                     return true;
             }
@@ -253,7 +253,7 @@ namespace AdbInstallerApp.Services
             if (parts.Length > 0)
             {
                 var firstPart = parts[0];
-                
+
                 // Check if it looks like a package name (contains dots and is reasonably long)
                 if (firstPart.Contains(".") && firstPart.Length > 3)
                 {
@@ -271,12 +271,12 @@ namespace AdbInstallerApp.Services
                                 break;
                             }
                         }
-                        
+
                         if (isValidPackage)
                             return firstPart;
                     }
                 }
-                
+
                 // If first part doesn't look like a package name, try to find one
                 foreach (var part in parts)
                 {
@@ -294,14 +294,14 @@ namespace AdbInstallerApp.Services
                                     break;
                                 }
                             }
-                            
+
                             if (isValidPackage)
                                 return part;
                         }
                     }
                 }
             }
-            
+
             // If no package name found, return a cleaned version of the filename
             var cleanName = fileName.Replace("-", "_").Replace(" ", "_");
             return cleanName.Length > 20 ? cleanName.Substring(0, 20) : cleanName;
@@ -311,19 +311,19 @@ namespace AdbInstallerApp.Services
         {
             // Convert to lowercase for case-insensitive comparison
             var lowerFileName = fileName.ToLowerInvariant();
-            
+
             // Extract split tag from filename
             var parts = fileName.Split('-');
             if (parts.Length > 1)
             {
                 // Look for common split patterns
-                var splitPatterns = new[] { 
-                    "arm64", "arm", "x86", "x86_64", 
+                var splitPatterns = new[] {
+                    "arm64", "arm", "x86", "x86_64",
                     "xxhdpi", "xhdpi", "hdpi", "mdpi", "ldpi",
                     "nodpi", "tvdpi", "xxxhdpi",
                     "v7a", "v8a", "v21", "v22", "v23", "v24", "v25", "v26", "v27", "v28", "v29", "v30", "v31", "v32", "v33", "v34"
                 };
-                
+
                 foreach (var pattern in splitPatterns)
                 {
                     if (lowerFileName.Contains(pattern))
@@ -345,7 +345,7 @@ namespace AdbInstallerApp.Services
                     // If it's all digits, it might be a version or split number
                     if (lastPart.All(char.IsDigit))
                         return $"SPLIT_{lastPart}";
-                    
+
                     // If it's all letters and short, it might be a split identifier
                     if (lastPart.All(char.IsLetter) && lastPart.Length <= 4)
                         return lastPart.ToUpper();
@@ -354,7 +354,7 @@ namespace AdbInstallerApp.Services
                 // Return the last part if no common pattern found
                 return parts[parts.Length - 1].ToUpper();
             }
-            
+
             return "Split";
         }
 

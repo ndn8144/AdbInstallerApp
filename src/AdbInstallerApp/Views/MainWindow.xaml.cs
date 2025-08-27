@@ -16,7 +16,7 @@ namespace AdbInstallerApp.Views
         public MainWindow()
         {
             InitializeComponent();
-            this.Closed += (_, __) => 
+            this.Closed += (_, __) =>
             {
                 try
                 {
@@ -88,7 +88,7 @@ namespace AdbInstallerApp.Views
             for (int i = 0; i < System.Windows.Media.VisualTreeHelper.GetChildrenCount(parent); i++)
             {
                 var child = System.Windows.Media.VisualTreeHelper.GetChild(parent, i);
-                
+
                 if (child is T childOfType)
                 {
                     if (string.IsNullOrEmpty(name) || (child as FrameworkElement)?.Name == name)
@@ -227,7 +227,7 @@ namespace AdbInstallerApp.Views
         {
             try
             {
-                if (sender is Border border && 
+                if (sender is Border border &&
                     border.DataContext is ApkGroupViewModel group &&
                     DataContext is MainViewModel viewModel)
                 {
@@ -243,7 +243,7 @@ namespace AdbInstallerApp.Views
                                     group.AddApk(apk);
                                 }
                             }
-                            
+
                             // Log the action
                             viewModel.LogText += $"\n[{DateTime.Now:HH:mm:ss}] ➕ Added {apkItems.Length} APK(s) to group '{group.Name}' via drag & drop";
                         }
@@ -261,7 +261,7 @@ namespace AdbInstallerApp.Views
             if (e.Data.GetDataPresent(typeof(ApkItemViewModel[])))
             {
                 e.Effects = DragDropEffects.Copy;
-                
+
                 // Visual feedback
                 if (sender is Border border)
                 {
@@ -319,7 +319,7 @@ namespace AdbInstallerApp.Views
 
                     var data = new DataObject(typeof(ApkItemViewModel[]), selectedApks);
                     System.Windows.DragDrop.DoDragDrop(border, data, DragDropEffects.Copy);
-                    
+
                     // Clear the start point
                     border.Tag = null;
                 }
@@ -350,54 +350,54 @@ namespace AdbInstallerApp.Views
         // Context menu helpers
         private void ShowApkContextMenu(object sender, MouseButtonEventArgs e)
         {
-            if (e.ChangedButton == MouseButton.Right && 
-                sender is FrameworkElement element && 
+            if (e.ChangedButton == MouseButton.Right &&
+                sender is FrameworkElement element &&
                 element.DataContext is ApkItemViewModel apkItem &&
                 DataContext is MainViewModel viewModel)
             {
                 var contextMenu = new ContextMenu();
-                
+
                 // Add to group menu items
                 if (viewModel.ApkGroups.Any())
                 {
                     var addToGroupMenuItem = new MenuItem { Header = "Add to Group" };
-                    
+
                     foreach (var group in viewModel.ApkGroups)
                     {
-                        var groupMenuItem = new MenuItem 
-                        { 
+                        var groupMenuItem = new MenuItem
+                        {
                             Header = group.DisplayName,
                             Command = viewModel.AddSelectedApksToGroupCommand,
                             CommandParameter = group
                         };
                         addToGroupMenuItem.Items.Add(groupMenuItem);
                     }
-                    
+
                     contextMenu.Items.Add(addToGroupMenuItem);
                 }
                 else
                 {
-                    contextMenu.Items.Add(new MenuItem 
-                    { 
+                    contextMenu.Items.Add(new MenuItem
+                    {
                         Header = "No groups available",
                         IsEnabled = false
                     });
                 }
-                
+
                 // Show APK info
                 contextMenu.Items.Add(new Separator());
-                contextMenu.Items.Add(new MenuItem 
-                { 
+                contextMenu.Items.Add(new MenuItem
+                {
                     Header = $"APK: {apkItem.DisplayInfo}",
                     IsEnabled = false
                 });
-                contextMenu.Items.Add(new MenuItem 
-                { 
+                contextMenu.Items.Add(new MenuItem
+                {
                     Header = $"Size: {apkItem.FileSize}",
                     IsEnabled = false
                 });
-                contextMenu.Items.Add(new MenuItem 
-                { 
+                contextMenu.Items.Add(new MenuItem
+                {
                     Header = $"Modified: {apkItem.LastModified}",
                     IsEnabled = false
                 });
@@ -413,7 +413,7 @@ namespace AdbInstallerApp.Views
             if (sender is TextBox searchBox && DataContext is MainViewModel viewModel)
             {
                 var searchText = searchBox.Text?.ToLowerInvariant() ?? string.Empty;
-                
+
                 if (string.IsNullOrWhiteSpace(searchText))
                 {
                     // Show all items
@@ -421,7 +421,7 @@ namespace AdbInstallerApp.Views
                     {
                         SetItemVisibility(apk, true);
                     }
-                    
+
                     foreach (var group in viewModel.ApkGroups)
                     {
                         SetGroupVisibility(group, true);
@@ -436,13 +436,13 @@ namespace AdbInstallerApp.Views
                                      apk.FileName.ToLowerInvariant().Contains(searchText);
                         SetItemVisibility(apk, visible);
                     }
-                    
+
                     // Filter groups and their items
                     foreach (var group in viewModel.ApkGroups)
                     {
                         var groupVisible = group.DisplayName.ToLowerInvariant().Contains(searchText) ||
                                          group.Description.ToLowerInvariant().Contains(searchText);
-                        
+
                         var hasVisibleItems = false;
                         foreach (var apk in group.ApkItems)
                         {
@@ -450,7 +450,7 @@ namespace AdbInstallerApp.Views
                                             apk.FileName.ToLowerInvariant().Contains(searchText);
                             if (itemVisible) hasVisibleItems = true;
                         }
-                        
+
                         SetGroupVisibility(group, groupVisible || hasVisibleItems);
                     }
                 }
@@ -477,7 +477,7 @@ namespace AdbInstallerApp.Views
             {
                 var dialog = new CreateGroupDialog();
                 var result = dialog.ShowDialog();
-                
+
                 if (result == true && dialog.DataContext is CreateGroupDialogModel dialogModel)
                 {
                     // Gọi command từ ViewModel thay vì xử lý trực tiếp
@@ -494,7 +494,7 @@ namespace AdbInstallerApp.Views
                 // Thay vì gọi AppendLog, sử dụng MessageBox trực tiếp
                 MessageBox.Show($"Error opening dialog: {ex.Message}", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
             }
-        }  
+        }
         private void NewGroupButton_Click(object sender, RoutedEventArgs e)
         {
             try
@@ -506,10 +506,10 @@ namespace AdbInstallerApp.Views
                     System.Diagnostics.Debug.WriteLine($"Debug: ApkGroups.Count = {mainViewModel.ApkGroups.Count}");
                     System.Diagnostics.Debug.WriteLine($"Debug: CurrentModule = {mainViewModel.CurrentModule}");
                 }
-                
+
                 var dialog = new CreateGroupDialog();
                 var result = dialog.ShowDialog();
-                
+
                 if (result == true && dialog.DataContext is CreateGroupDialogModel dialogModel)
                 {
                     if (DataContext is MainViewModel viewModel)
@@ -517,7 +517,7 @@ namespace AdbInstallerApp.Views
                         viewModel.NewGroupName = dialogModel.GroupName.Trim();
                         viewModel.NewGroupDescription = dialogModel.Description.Trim();
                         viewModel.CreateGroupCommand.Execute(null);
-                        
+
                         // Debug: Log sau khi tạo group
                         System.Diagnostics.Debug.WriteLine($"Debug: After creating group - ApkGroups.Count = {viewModel.ApkGroups.Count}");
                     }

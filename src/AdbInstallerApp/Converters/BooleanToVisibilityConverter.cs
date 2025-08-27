@@ -16,10 +16,10 @@ namespace AdbInstallerApp.Converters
                 {
                     return boolValue ? Visibility.Collapsed : Visibility.Visible;
                 }
-                
+
                 return boolValue ? Visibility.Visible : Visibility.Collapsed;
             }
-            
+
             return Visibility.Collapsed;
         }
 
@@ -28,16 +28,16 @@ namespace AdbInstallerApp.Converters
             if (value is Visibility visibility)
             {
                 bool result = visibility == Visibility.Visible;
-                
+
                 // If parameter is "Invert", reverse the logic
                 if (parameter?.ToString()?.Equals("Invert", StringComparison.OrdinalIgnoreCase) == true)
                 {
                     return !result;
                 }
-                
+
                 return result;
             }
-            
+
             return false;
         }
     }
