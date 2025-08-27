@@ -213,20 +213,6 @@
                                      <TextBlock Text="Manage and monitor your Android devices" 
                                                 FontSize="12" Foreground="White" Opacity="0.5"/>
                                  </StackPanel>
-                                 
-                                 <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
-                                     <Button Content="🔧 USB Debug Checklist" 
-                                             Style="{StaticResource ModernButtonStyle}"
-                                             Command="{Binding ShowUsbDebugChecklistCommand}"
-                                             Margin="0,0,8,0"
-                                             FontSize="12" Padding="8,5"
-                                             ToolTip="Show troubleshooting steps for USB debugging issues"/>
-                                     <Button Content="📊 Device Details" 
-                                             Style="{StaticResource ModernButtonStyle}"
-                                             Command="{Binding ShowDeviceDetailsCommand}"
-                                             FontSize="12" Padding="8,5"
-                                             ToolTip="Show detailed device information and specifications"/>
-                                 </StackPanel>
                              </Grid>
                          </Border>
                          <!-- Device Controls -->
@@ -234,26 +220,34 @@
                              <Grid.ColumnDefinitions>
                                  <ColumnDefinition Width="Auto"/>
                                  <ColumnDefinition Width="*"/>
-                                 <ColumnDefinition Width="150"/>
+                                 <ColumnDefinition Width="Auto"/>
+                                 <ColumnDefinition Width="Auto"/>
                              </Grid.ColumnDefinitions>
                              
                              <!-- Select All Button -->
                              <Button Grid.Column="0" Content="☑️ Select All" 
                                      Style="{StaticResource ModernButtonStyle}"
                                      Command="{Binding SelectAllDevicesCommand}"
-                                     FontSize="14" Padding="8,5" Margin="4,0,6,6"/>
+                                     FontSize="12" Padding="8,5" Margin="4,0,6,6"/>
                              
                              <!-- Spacer -->
                              <Grid Grid.Column="1"/>
                              
+                             <!-- USB Debug Checklist Button -->
+                             <Button Grid.Column="2" Content="🔧 USB Debug Checklist" 
+                                     Style="{StaticResource ModernButtonStyle}"
+                                     Command="{Binding ShowUsbDebugChecklistCommand}"
+                                     Margin="0,0,8,6"
+                                     FontSize="12" Padding="8,5"
+                                     ToolTip="Show troubleshooting steps for USB debugging issues"/>
+                             
                              <!-- Selection Count Badge -->
-                             <Border Grid.Column="2" Background="#E8F5E8" CornerRadius="8" Padding="12,12" 
+                             <Border Grid.Column="3" Background="#E8F5E8" CornerRadius="8" Padding="12,12" 
                                      VerticalAlignment="Center" Margin="0,0,6,6">
                                  <TextBlock Text="{Binding SelectedDevicesCountText, FallbackValue='No devices selected'}" 
                                             Foreground="#2E7D32" FontSize="14" FontWeight="Medium"/>
                              </Border>
-                         </Grid>
-                        
+                        </Grid>
                          <!-- Devices DataGrid -->
                          <DataGrid x:Name="DevicesDataGrid"
                                    ItemsSource="{Binding Devices}" 
@@ -386,15 +380,54 @@
                                                          HeaderStyle="{StaticResource CenterAlignedHeaderStyle}"
                                                          CellStyle="{StaticResource CenterAlignedCheckBoxColumnStyle}"/>
                                  
-                                 <!-- Connection Status Icon Column -->
-                                 <DataGridTextColumn Binding="{Binding ConnectionStatusIcon, Mode=OneWay}" 
+                                 <!-- Connection Status Column -->
+                                 <DataGridTextColumn Binding="{Binding ConnectionStatus, Mode=OneWay}" 
                                                      Header="Status" 
-                                                     Width="60" 
-                                                     MinWidth="60" 
-                                                     MaxWidth="80" 
+                                                     Width="80" 
+                                                     MinWidth="80" 
+                                                     MaxWidth="120" 
                                                      IsReadOnly="True"
                                                      HeaderStyle="{StaticResource CenterAlignedHeaderStyle}"
-                                                     CellStyle="{StaticResource CenterAlignedCellStyle}"/>
+                                                     CellStyle="{StaticResource CenterAlignedCellStyle}">
+                                     <DataGridTextColumn.ElementStyle>
+                                         <Style TargetType="TextBlock">
+                                             <Style.Triggers>
+                                                 <DataTrigger Binding="{Binding ConnectionStatus}" Value="Ready">
+                                                     <Setter Property="Foreground" Value="#4CAF50"/>
+                                                     <Setter Property="FontWeight" Value="Bold"/>
+                                                     <Setter Property="FontSize" Value="14"/>
+                                                     <Setter Property="HorizontalAlignment" Value="Center"/>
+                                                     <Setter Property="VerticalAlignment" Value="Center"/>
+                                                     <Setter Property="Margin" Value="2"/>
+                                                 </DataTrigger>
+                                                 <DataTrigger Binding="{Binding ConnectionStatus}" Value="Offline">
+                                                     <Setter Property="Foreground" Value="#F44336"/>
+                                                     <Setter Property="FontWeight" Value="Bold"/>
+                                                     <Setter Property="FontSize" Value="14"/>
+                                                     <Setter Property="HorizontalAlignment" Value="Center"/>
+                                                     <Setter Property="VerticalAlignment" Value="Center"/>
+                                                     <Setter Property="Margin" Value="2"/>
+                                                 </DataTrigger>
+                                                 <DataTrigger Binding="{Binding ConnectionStatus}" Value="Unauthorized">
+                                                     <Setter Property="Foreground" Value="#FF9800"/>
+                                                     <Setter Property="FontWeight" Value="Bold"/>
+                                                     <Setter Property="FontSize" Value="14"/>
+                                                     <Setter Property="HorizontalAlignment" Value="Center"/>
+                                                     <Setter Property="VerticalAlignment" Value="Center"/>
+                                                     <Setter Property="Margin" Value="2"/>
+                                                 </DataTrigger>
+                                                 <DataTrigger Binding="{Binding ConnectionStatus}" Value="Unknown">
+                                                     <Setter Property="Foreground" Value="#9E9E9E"/>
+                                                     <Setter Property="FontWeight" Value="Normal"/>
+                                                     <Setter Property="FontSize" Value="14"/>
+                                                     <Setter Property="HorizontalAlignment" Value="Center"/>
+                                                     <Setter Property="VerticalAlignment" Value="Center"/>
+                                                     <Setter Property="Margin" Value="2"/>
+                                                 </DataTrigger>
+                                             </Style.Triggers>
+                                         </Style>
+                                     </DataGridTextColumn.ElementStyle>
+                                 </DataGridTextColumn>
                                  
                                  <!-- Device Name Column -->
                                  <DataGridTextColumn Binding="{Binding DisplayName, Mode=OneWay}" 
@@ -427,14 +460,14 @@
                                                      CellStyle="{StaticResource CenterAlignedCellStyle}"/>
                                  
                                  <!-- Screen Info Column -->
-                                 <DataGridTextColumn Binding="{Binding ScreenInfo, Mode=OneWay}" 
+                                 <!-- <DataGridTextColumn Binding="{Binding ScreenInfo, Mode=OneWay}" 
                                                      Header="Screen" 
                                                      Width="*" 
                                                      MinWidth="100" 
                                                      MaxWidth="150" 
                                                      IsReadOnly="True"
                                                      HeaderStyle="{StaticResource CenterAlignedHeaderStyle}"
-                                                     CellStyle="{StaticResource CenterAlignedCellStyle}"/>
+                                                     CellStyle="{StaticResource CenterAlignedCellStyle}"/> -->
                                  
                                  <!-- Battery Info Column -->
                                  <DataGridTextColumn Binding="{Binding BatteryInfo, Mode=OneWay}" 
@@ -495,6 +528,35 @@
                                                      IsReadOnly="True"
                                                      HeaderStyle="{StaticResource CenterAlignedHeaderStyle}"
                                                      CellStyle="{StaticResource CenterAlignedCellStyle}"/> -->
+                                 
+                                                                   <!-- Actions Column -->
+                                  <DataGridTemplateColumn Header="Actions" 
+                                                         Width="100" 
+                                                         HeaderStyle="{StaticResource CenterAlignedHeaderStyle}"
+                                                         CellStyle="{StaticResource CenterAlignedCellStyle}">
+                                      <DataGridTemplateColumn.CellTemplate>
+                                          <DataTemplate>
+                                              <Button Content="📊 Details" 
+                                                      Style="{StaticResource ModernButtonStyle}"
+                                                      Command="{Binding DataContext.ShowSingleDeviceDetailsCommand, RelativeSource={RelativeSource AncestorType=DataGrid}}"
+                                                      CommandParameter="{Binding}"
+                                                      FontSize="12" Padding="8,8" Margin="0,0,0,0"
+                                                      ToolTip="Show detailed information for this device">
+                                                  <Button.Template>
+                                                      <ControlTemplate TargetType="Button">
+                                                          <Border Background="{TemplateBinding Background}"
+                                                                  BorderBrush="{TemplateBinding BorderBrush}"
+                                                                  BorderThickness="{TemplateBinding BorderThickness}"
+                                                                  Padding="{TemplateBinding Padding}">
+                                                              <ContentPresenter HorizontalAlignment="Center" 
+                                                                              VerticalAlignment="Center"/>
+                                                          </Border>
+                                                      </ControlTemplate>
+                                                  </Button.Template>
+                                              </Button>
+                                          </DataTemplate>
+                                      </DataGridTemplateColumn.CellTemplate>
+                                  </DataGridTemplateColumn>
                                  
                                  <!-- Last Updated Column -->
                                  <!-- <DataGridTextColumn Binding="{Binding LastUpdated, Mode=OneWay}" 
@@ -1284,6 +1346,221 @@
                                                 Command="{Binding ResetToDefaultsCommand}"/>
                                     </StackPanel>
                                 </Grid>
+                            </StackPanel>
+                        </Border>
+                    </StackPanel>
+                </Grid>
+                
+                <!-- Installed Apps Module -->
+                <Grid x:Name="InstalledAppsContent" 
+                      Visibility="{Binding CurrentModule, Converter={StaticResource ModuleToVisibilityConverter}, ConverterParameter='InstalledApps'}">
+                    <StackPanel>
+                        <TextBlock Text="📋 Installed Apps" 
+                                   FontSize="24" FontWeight="Bold" 
+                                   Foreground="#333" Margin="0,0,0,20"/>
+                        
+                        <Border Background="White" CornerRadius="8" Padding="20">
+                            <StackPanel>
+                                <TextBlock Text="App Management" FontSize="18" FontWeight="SemiBold" Margin="0,0,0,20"/>
+                                
+                                <Grid Margin="0,0,0,16">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="200" MinWidth="150" MaxWidth="300"/>
+                                        <ColumnDefinition Width="*" MinWidth="200"/>
+                                    </Grid.ColumnDefinitions>
+                                    <Grid.RowDefinitions>
+                                        <RowDefinition Height="Auto"/>
+                                        <RowDefinition Height="Auto"/>
+                                        <RowDefinition Height="Auto"/>
+                                        <RowDefinition Height="Auto"/>
+                                    </Grid.RowDefinitions>
+                                    
+                                    <TextBlock Grid.Row="0" Grid.Column="0" Text="Select Device:" VerticalAlignment="Center"/>
+                                    <ComboBox Grid.Row="0" Grid.Column="1" 
+                                              ItemsSource="{Binding Devices}"
+                                              SelectedItem="{Binding SelectedDevice}"
+                                              DisplayMemberPath="DisplayName"
+                                              MinWidth="200">
+                                    </ComboBox>
+                                    
+                                    <!-- Device Status Display -->
+                                    <TextBlock Grid.Row="1" Grid.Column="0" Text="Status:" VerticalAlignment="Center" Margin="0,8,0,0"/>
+                                    <TextBlock Grid.Row="1" Grid.Column="1" 
+                                               Text="{Binding DeviceStatusSummary}" 
+                                               VerticalAlignment="Center"
+                                               Foreground="#666" 
+                                               FontSize="12"
+                                               Margin="0,8,0,0"/>
+                                    
+                                    <TextBlock Grid.Row="2" Grid.Column="0" Text="Export Directory:" VerticalAlignment="Center" Margin="0,16,0,0"/>
+                                    <Grid Grid.Row="2" Grid.Column="1" Margin="0,16,0,0">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="*" MinWidth="200"/>
+                                            <ColumnDefinition Width="Auto"/>
+                                        </Grid.ColumnDefinitions>
+                                        <TextBox Grid.Column="0" Text="{Binding ExportDirectory, FallbackValue='No folder selected'}" 
+                                                 Style="{StaticResource ModernTextBoxStyle}"
+                                                 Margin="0,0,8,0"/>
+                                        <Button Grid.Column="1" Content="Browse" 
+                                                Style="{StaticResource ModernButtonStyle}"
+                                                Command="{Binding ChooseExportDirectoryCommand}"/>
+                                    </Grid>
+                                    
+                                    <TextBlock Grid.Row="3" Grid.Column="0" Text="Actions:" VerticalAlignment="Center" Margin="0,16,0,0"/>
+                                    <StackPanel Grid.Row="3" Grid.Column="1" Orientation="Horizontal" Margin="0,16,0,0">
+                                        <Button Content="🔄 Refresh Apps" 
+                                                Style="{StaticResource AccentButtonStyle}"
+                                                Command="{Binding RefreshInstalledAppsCommand}"
+                                                Margin="0,0,12,0"/>
+                                        <Button Content="📦 Export Selected" 
+                                                Style="{StaticResource ModernButtonStyle}"
+                                                Command="{Binding ExportSelectedApksCommand}"
+                                                Margin="0,0,12,0"/>
+                                        <TextBlock Text="{Binding SelectedInstalledAppsCountText}" 
+                                                   VerticalAlignment="Center"
+                                                   Foreground="#666" 
+                                                   FontSize="12"/>
+                                    </StackPanel>
+                                </Grid>
+                            </StackPanel>
+                        </Border>
+                        
+                        <!-- Apps List -->
+                        <Border Background="White" CornerRadius="8" Padding="20" Margin="0,16,0,0">
+                            <StackPanel>
+                                <Grid Margin="0,0,0,16">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="Auto"/>
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock Text="📱 Installed Applications" FontSize="18" FontWeight="SemiBold"/>
+                                    <StackPanel Grid.Column="1" Orientation="Horizontal">
+                                        <Button Content="Select All" 
+                                                Style="{StaticResource ModernButtonStyle}"
+                                                Command="{Binding SelectAllInstalledAppsCommand}"
+                                                Margin="0,0,8,0" FontSize="12" Padding="8,4"/>
+                                        <Button Content="Clear Selection" 
+                                                Style="{StaticResource ModernButtonStyle}"
+                                                Command="{Binding ClearInstalledAppsSelectionCommand}"
+                                                FontSize="12" Padding="8,4"/>
+                                    </StackPanel>
+                                </Grid>
+                                
+                                <!-- Filter Controls -->
+                                <Grid Margin="0,0,0,16">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="Auto"/>
+                                        <ColumnDefinition Width="Auto"/>
+                                    </Grid.ColumnDefinitions>
+                                    
+                                    <TextBox Grid.Column="0" Text="{Binding AppFilterKeyword, UpdateSourceTrigger=PropertyChanged}" 
+                                             Style="{StaticResource ModernTextBoxStyle}"
+                                             FontSize="14" Height="35"
+                                             VerticalContentAlignment="Center"
+                                             Margin="0,0,12,0">
+                                        <TextBox.Template>
+                                            <ControlTemplate TargetType="TextBox">
+                                                <Border Background="{TemplateBinding Background}" 
+                                                        BorderBrush="{TemplateBinding BorderBrush}" 
+                                                        BorderThickness="{TemplateBinding BorderThickness}"
+                                                        CornerRadius="4">
+                                                    <Grid>
+                                                        <ScrollViewer x:Name="PART_ContentHost" 
+                                                                    Margin="10,0,30,0"
+                                                                    VerticalAlignment="Center"/>
+                                                        <TextBlock Text="🔍 Search apps..." 
+                                                                 Foreground="{StaticResource TextSecondaryBrush}"
+                                                                 Margin="10,0,0,0"
+                                                                 VerticalAlignment="Center"
+                                                                 IsHitTestVisible="False"
+                                                                 Visibility="{Binding Text, RelativeSource={RelativeSource TemplatedParent}, Converter={StaticResource StringToVisibilityConverter}, ConverterParameter=Invert}"/>
+                                                    </Grid>
+                                                </Border>
+                                                <ControlTemplate.Triggers>
+                                                    <Trigger Property="IsFocused" Value="True">
+                                                        <Setter Property="BorderBrush" Value="{StaticResource PrimaryBrush}"/>
+                                                        <Setter Property="BorderThickness" Value="2"/>
+                                                    </Trigger>
+                                                </ControlTemplate.Triggers>
+                                            </ControlTemplate>
+                                        </TextBox.Template>
+                                    </TextBox>
+                                    
+                                    <CheckBox Grid.Column="1" Content="User Apps Only" 
+                                              IsChecked="{Binding ShowUserAppsOnly}" 
+                                              FontSize="14" VerticalAlignment="Center"
+                                              Margin="0,0,12,0"/>
+                                    <CheckBox Grid.Column="2" Content="Include System Apps" 
+                                              IsChecked="{Binding ShowSystemApps}" 
+                                              FontSize="14" VerticalAlignment="Center"/>
+                                </Grid>
+                                
+                                <!-- Loading Indicator -->
+                                <Border Background="#F0F0F0" CornerRadius="4" Padding="20" 
+                                        Visibility="{Binding IsLoadingApps, Converter={StaticResource BooleanToVisibilityConverter}}">
+                                    <StackPanel HorizontalAlignment="Center">
+                                        <ProgressBar IsIndeterminate="True" Width="200" Height="4" 
+                                                   Foreground="{StaticResource PrimaryBrush}" Margin="0,0,0,10"/>
+                                        <TextBlock Text="Loading installed apps..." 
+                                                 FontSize="14" FontWeight="Medium"
+                                                 Foreground="{StaticResource TextPrimaryBrush}"
+                                                 HorizontalAlignment="Center"/>
+                                    </StackPanel>
+                                </Border>
+                                
+                                <!-- Apps DataGrid -->
+                                <DataGrid ItemsSource="{Binding InstalledApps}" 
+                                          AutoGenerateColumns="False"
+                                          CanUserAddRows="False" CanUserDeleteRows="False"
+                                          CanUserResizeRows="False" CanUserSortColumns="True"
+                                          GridLinesVisibility="None"
+                                          HeadersVisibility="Column"
+                                          SelectionMode="Extended"
+                                          RowStyle="{StaticResource ModernDataGridRowStyle}"
+                                          ColumnHeaderStyle="{StaticResource ModernDataGridHeaderStyle}"
+                                          CellStyle="{StaticResource ModernDataGridCellStyle}"
+                                          Background="Transparent"
+                                          BorderThickness="0"
+                                          MaxHeight="400">
+                                    
+                                    <DataGrid.Columns>
+                                        <!-- Selection Column -->
+                                        <DataGridTemplateColumn Header="Select" Width="60" CanUserSort="False">
+                                            <DataGridTemplateColumn.CellTemplate>
+                                                <DataTemplate>
+                                                    <CheckBox IsChecked="{Binding IsSelected, UpdateSourceTrigger=PropertyChanged}" 
+                                                            HorizontalAlignment="Center" VerticalAlignment="Center"
+                                                            Style="{StaticResource ModernDataGridCheckBoxStyle}"/>
+                                                </DataTemplate>
+                                            </DataGridTemplateColumn.CellTemplate>
+                                        </DataGridTemplateColumn>
+
+                                        <!-- App Name Column -->
+                                        <DataGridTextColumn Header="App Name" Binding="{Binding DisplayName}" 
+                                                          Width="*" MinWidth="200"/>
+
+                                        <!-- Package Name Column -->
+                                        <DataGridTextColumn Header="Package Name" Binding="{Binding PackageName}" 
+                                                          Width="250"/>
+
+                                        <!-- Version Column -->
+                                        <DataGridTextColumn Header="Version" Binding="{Binding VersionInfo}" 
+                                                          Width="120"/>
+
+                                        <!-- Type Column -->
+                                        <DataGridTextColumn Header="Type" Binding="{Binding AppType}" 
+                                                          Width="80"/>
+
+                                        <!-- Size Column -->
+                                        <DataGridTextColumn Header="Size" Binding="{Binding SizeInfo}" 
+                                                          Width="100"/>
+
+                                        <!-- Splits Column -->
+                                        <DataGridTextColumn Header="Splits" Binding="{Binding SplitInfo}" 
+                                                          Width="80"/>
+                                    </DataGrid.Columns>
+                                </DataGrid>
                             </StackPanel>
                         </Border>
                     </StackPanel>

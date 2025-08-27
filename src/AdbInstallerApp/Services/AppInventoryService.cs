@@ -23,31 +23,39 @@ namespace AdbInstallerApp.Services
 
             try
             {
-                // 1) List packages (try modern cmd first, fallback to pm)
-                var packages = await ListPackagesAsync(serial, opts.UserId, ct);
+                // 1) List packages with optimized command
+                var packages = await ListPackagesOptimizedAsync(serial, opts, ct);
 
                 if (packages.Count == 0)
                     return Array.Empty<InstalledApp>();
 
-                // 2) Enrich with detailed info
+                // 2) Batch process packages for better performance
                 var results = new List<InstalledApp>();
-                var semaphore = new SemaphoreSlim(3); // Limit concurrent requests
+                var semaphore = new SemaphoreSlim(6); // Increased concurrency
+                var batchSize = 10;
 
-                var tasks = packages.Select(async pkg =>
+                for (int i = 0; i < packages.Count; i += batchSize)
                 {
-                    await semaphore.WaitAsync(ct);
-                    try
+                    var batch = packages.Skip(i).Take(batchSize);
+                    var batchTasks = batch.Select(async pkg =>
                     {
-                        return await EnrichPackageInfoAsync(serial, pkg, opts.WithSizes, ct);
-                    }
-                    finally
-                    {
-                        semaphore.Release();
-                    }
-                });
+                        await semaphore.WaitAsync(ct);
+                        try
+                        {
+                            return await EnrichPackageInfoOptimizedAsync(serial, pkg, opts.WithSizes, ct);
+                        }
+                        finally
+                        {
+                            semaphore.Release();
+                        }
+                    });
 
-                var enrichedApps = await Task.WhenAll(tasks);
-                results.AddRange(enrichedApps.Where(app => app != null)!);
+                    var batchResults = await Task.WhenAll(batchTasks);
+                    results.AddRange(batchResults.Where(app => app != null)!);
+                    
+                    // Allow UI updates between batches
+                    await Task.Delay(1, ct);
+                }
 
                 // 3) Apply filters
                 return ApplyFilters(results, opts);
@@ -58,17 +66,24 @@ namespace AdbInstallerApp.Services
             }
         }
 
-        private async Task<List<PackageEntry>> ListPackagesAsync(string serial, int userId, CancellationToken ct)
+        private async Task<List<PackageEntry>> ListPackagesOptimizedAsync(string serial, AppQueryOptions opts, CancellationToken ct)
         {
-            // Try modern cmd package first  
-            var cmd = $"-s {serial} shell cmd package list packages -f --user {userId}";
+            // Always get all packages first, then filter in code for reliability
+            var cmd = $"-s {serial} shell cmd package list packages -f --user {opts.UserId}";
             var (code, output, _) = await ProcessRunner.RunAsync(_adb.AdbPath, cmd, timeoutMs: 15000);
 
             if (code != 0 || string.IsNullOrWhiteSpace(output))
             {
-                // Fallback to pm
-                cmd = $"-s {serial} shell pm list packages -f --user {userId}";
+                // Fallback to pm command
+                cmd = $"-s {serial} shell pm list packages -f --user {opts.UserId}";
                 (_, output, _) = await ProcessRunner.RunAsync(_adb.AdbPath, cmd, timeoutMs: 15000);
+                
+                if (string.IsNullOrWhiteSpace(output))
+                {
+                    // Try without --user flag as fallback
+                    cmd = $"-s {serial} shell pm list packages -f";
+                    (_, output, _) = await ProcessRunner.RunAsync(_adb.AdbPath, cmd, timeoutMs: 15000);
+                }
             }
 
             return ParseListPackages(output);
@@ -102,7 +117,7 @@ namespace AdbInstallerApp.Services
             return packages;
         }
 
-        private async Task<InstalledApp?> EnrichPackageInfoAsync(
+        private async Task<InstalledApp?> EnrichPackageInfoOptimizedAsync(
             string serial,
             PackageEntry pkg,
             bool withSizes,
@@ -110,18 +125,20 @@ namespace AdbInstallerApp.Services
         {
             try
             {
-                // Get package paths (base + splits)
-                var paths = await GetPackagePathsAsync(serial, pkg.PackageName, ct);
+                // Run operations in parallel for better performance
+                var pathsTask = GetPackagePathsAsync(serial, pkg.PackageName, ct);
+                var detailsTask = GetPackageDetailsOptimizedAsync(serial, pkg.PackageName, ct);
 
-                // Get package info from dumpsys
-                var (label, versionName, versionCode, isSystem) =
-                    await GetPackageDetailsAsync(serial, pkg.PackageName, ct);
+                await Task.WhenAll(pathsTask, detailsTask);
 
-                // Get size if requested
+                var paths = await pathsTask;
+                var (label, versionName, versionCode, isSystem) = await detailsTask;
+
+                // Get size if requested (skip for system apps to improve performance)
                 long? totalSize = null;
-                if (withSizes)
+                if (withSizes && !isSystem)
                 {
-                    totalSize = await CalculatePackageSizeAsync(serial, paths, ct);
+                    totalSize = await CalculatePackageSizeOptimizedAsync(serial, paths, ct);
                 }
 
                 return new InstalledApp(
@@ -173,10 +190,18 @@ namespace AdbInstallerApp.Services
         }
 
         private async Task<(string label, string versionName, long versionCode, bool isSystem)>
-            GetPackageDetailsAsync(string serial, string packageName, CancellationToken ct)
+            GetPackageDetailsOptimizedAsync(string serial, string packageName, CancellationToken ct)
         {
-            var cmd = $"-s {serial} shell dumpsys package {packageName}";
-            var (_, output, _) = await ProcessRunner.RunAsync(_adb.AdbPath, cmd, timeoutMs: 10000);
+            // Use lighter weight command for basic info
+            var cmd = $"-s {serial} shell dumpsys package {packageName} | grep -E 'applicationLabel=|versionName=|versionCode=|flags='";
+            var (code, output, _) = await ProcessRunner.RunAsync(_adb.AdbPath, cmd, timeoutMs: 5000);
+
+            if (code != 0 || string.IsNullOrWhiteSpace(output))
+            {
+                // Fallback to full dumpsys
+                cmd = $"-s {serial} shell dumpsys package {packageName}";
+                (_, output, _) = await ProcessRunner.RunAsync(_adb.AdbPath, cmd, timeoutMs: 8000);
+            }
 
             return ParseDumpsysPackage(output, packageName);
         }
@@ -226,32 +251,45 @@ namespace AdbInstallerApp.Services
             return (label, versionName, versionCode, isSystem);
         }
 
-        private async Task<long> CalculatePackageSizeAsync(
+        private async Task<long> CalculatePackageSizeOptimizedAsync(
             string serial,
             IReadOnlyList<string> paths,
             CancellationToken ct)
         {
-            long totalSize = 0;
+            if (paths.Count == 0) return 0;
 
-            foreach (var path in paths)
+            try
             {
-                try
+                // Use single command for all paths when possible
+                if (paths.Count == 1)
                 {
-                    var cmd = $"-s {serial} shell stat -c %s \"{path}\"";
-                    var (_, output, _) = await ProcessRunner.RunAsync(_adb.AdbPath, cmd, timeoutMs: 5000);
+                    var cmd = $"-s {serial} shell stat -c %s \"{paths[0]}\"";
+                    var (_, output, _) = await ProcessRunner.RunAsync(_adb.AdbPath, cmd, timeoutMs: 3000);
+                    return long.TryParse(output.Trim(), out var size) ? size : 0;
+                }
 
-                    if (long.TryParse(output.Trim(), out var size))
+                // For multiple paths, use parallel execution with timeout
+                var sizeTasks = paths.Select(async path =>
+                {
+                    try
                     {
-                        totalSize += size;
+                        var cmd = $"-s {serial} shell stat -c %s \"{path}\"";
+                        var (_, output, _) = await ProcessRunner.RunAsync(_adb.AdbPath, cmd, timeoutMs: 2000);
+                        return long.TryParse(output.Trim(), out var size) ? size : 0L;
                     }
-                }
-                catch
-                {
-                    // Skip if can't get size for this path
-                }
-            }
+                    catch
+                    {
+                        return 0L;
+                    }
+                });
 
-            return totalSize;
+                var sizes = await Task.WhenAll(sizeTasks);
+                return sizes.Sum();
+            }
+            catch
+            {
+                return 0;
+            }
         }
 
         private IReadOnlyList<InstalledApp> ApplyFilters(List<InstalledApp> apps, AppQueryOptions opts)

@@ -1,22 +1,67 @@
+using System.ComponentModel;
+using System.Runtime.CompilerServices;
+
 namespace AdbInstallerApp.Models
 {
-    public sealed record InstalledApp(
-        string PackageName,
-        string Label,
-        string VersionName,
-        long VersionCode,
-        int UserId,
-        bool IsSystemApp,
-        IReadOnlyList<string> CodePaths,   // base + splits (device paths)
-        long? TotalSizeBytes               // optional
-    )
+    public sealed class InstalledApp : INotifyPropertyChanged
     {
+        private bool _isSelected;
+
+        public InstalledApp(
+            string packageName,
+            string label,
+            string versionName,
+            long versionCode,
+            int userId,
+            bool isSystemApp,
+            IReadOnlyList<string> codePaths,
+            long? totalSizeBytes)
+        {
+            PackageName = packageName;
+            Label = label;
+            VersionName = versionName;
+            VersionCode = versionCode;
+            UserId = userId;
+            IsSystemApp = isSystemApp;
+            CodePaths = codePaths;
+            TotalSizeBytes = totalSizeBytes;
+        }
+
+        public string PackageName { get; }
+        public string Label { get; }
+        public string VersionName { get; }
+        public long VersionCode { get; }
+        public int UserId { get; }
+        public bool IsSystemApp { get; }
+        public IReadOnlyList<string> CodePaths { get; }
+        public long? TotalSizeBytes { get; }
+
+        public bool IsSelected
+        {
+            get => _isSelected;
+            set
+            {
+                if (_isSelected != value)
+                {
+                    _isSelected = value;
+                    OnPropertyChanged();
+                }
+            }
+        }
+
         public bool HasSplits => CodePaths.Count > 1;
         public string DisplayName => !string.IsNullOrEmpty(Label) ? Label : PackageName;
         public string VersionInfo => !string.IsNullOrEmpty(VersionName) ? $"{VersionName} ({VersionCode})" : VersionCode.ToString();
         public string AppType => IsSystemApp ? "System" : "User";
         public string SizeInfo => TotalSizeBytes?.ToString("N0") + " bytes" ?? "Unknown";
         public string SplitInfo => HasSplits ? $"Split ({CodePaths.Count})" : "Single";
+
+        public event PropertyChangedEventHandler? PropertyChanged;
+
+        private void OnPropertyChanged([CallerMemberName] string? propertyName = null)
+        {
+            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
+        }
     }
 
     public sealed record ExportResult(

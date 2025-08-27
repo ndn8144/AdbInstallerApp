@@ -44,6 +44,20 @@ namespace AdbInstallerApp.ViewModels
         [ObservableProperty]
         private string _selectedDeviceSerial = string.Empty;
 
+        private DeviceViewModel? _selectedDevice;
+        public DeviceViewModel? SelectedDevice
+        {
+            get => _selectedDevice;
+            set
+            {
+                if (SetProperty(ref _selectedDevice, value))
+                {
+                    SelectedDeviceSerial = value?.Model?.Serial ?? string.Empty;
+                    OnPropertyChanged(nameof(SelectedDeviceSerial));
+                }
+            }
+        }
+
         [ObservableProperty]
         private string _exportDirectory = string.Empty;
 
@@ -146,12 +160,45 @@ namespace AdbInstallerApp.ViewModels
                 _ = _adb.StartServerAsync();
                 AppendLog("🚀 ADB server starting...");
                 AppendLog("📱 Ready! Connect your Android devices and select APK files to install.");
+                
+                // Setup status refresh timer
+                SetupStatusRefreshTimer();
             }
             catch (Exception ex)
             {
                 AppendLog($"❌ Initialization error: {ex.Message}");
                 System.Windows.MessageBox.Show($"Failed to initialize application: {ex.Message}",
                     "Initialization Error", System.Windows.MessageBoxButton.OK, System.Windows.MessageBoxImage.Error);
+            }
+        }
+
+        private void SetupStatusRefreshTimer()
+        {
+            try
+            {
+                var timer = new System.Windows.Threading.DispatcherTimer();
+                timer.Interval = TimeSpan.FromSeconds(3); // Refresh every 3 seconds
+                timer.Tick += (sender, e) =>
+                {
+                    try
+                    {
+                        // Force refresh device status
+                        foreach (var device in Devices)
+                        {
+                            device.RefreshStatus();
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        AppendLog($"❌ Error in status refresh timer: {ex.Message}");
+                    }
+                };
+                timer.Start();
+                AppendLog("✅ Status refresh timer started");
+            }
+            catch (Exception ex)
+            {
+                AppendLog($"❌ Failed to setup status refresh timer: {ex.Message}");
             }
         }
 
@@ -181,45 +228,73 @@ namespace AdbInstallerApp.ViewModels
             {
                 try
                 {
-                    Devices.Clear();
+                    AppendLog($"🔄 Device list changed. Received {devices?.Count ?? 0} device(s)");
+                    
                     if (devices != null)
                     {
-                        var addedSerials = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-
-                        foreach (var d in devices)
+                        // Fix nullability warning by filtering out null devices first
+                        var validDevices = devices.Where(d => d != null && !string.IsNullOrEmpty(d.Serial?.Trim())).ToList();
+                        
+                        // Create dictionary with non-null keys to fix CS8714 and CS8621 warnings
+                        var deviceDict = validDevices.ToDictionary(
+                            d => d.Serial!.Trim(), // Safe to use ! since we filtered nulls
+                            d => d, 
+                            StringComparer.OrdinalIgnoreCase);
+                        var currentDevices = Devices.ToList();
+                        
+                        // Update existing devices or add new ones
+                        foreach (var deviceInfo in validDevices) // Use validDevices instead of devices
                         {
-                            if (d != null && !string.IsNullOrEmpty(d.Serial?.Trim()))
+                            var serial = deviceInfo.Serial!.Trim(); // Safe to use ! since we filtered
+                            var existingDevice = currentDevices.FirstOrDefault(d => 
+                                d.Serial?.Trim().Equals(serial, StringComparison.OrdinalIgnoreCase) == true);
+                            
+                            if (existingDevice != null)
                             {
-                                var serial = d.Serial.Trim();
-
-                                if (!addedSerials.Contains(serial))
+                                // Update existing device
+                                var oldState = existingDevice.State;
+                                var newState = deviceInfo.State;
+                                
+                                if (oldState != newState)
                                 {
-                                    var deviceVM = new DeviceViewModel(d);
-                                    AppendLog($"Adding device: {deviceVM.DisplayName} (Serial: {serial})");
-                                    Devices.Add(deviceVM);
-                                    addedSerials.Add(serial);
+                                    AppendLog($"📱 Device state changed: {existingDevice.DisplayName} - {oldState} → {newState}");
                                 }
-                                else
-                                {
-                                    AppendLog($"Skipping duplicate device with serial: {serial}");
-                                }
+                                
+                                existingDevice.UpdateModel(deviceInfo);
                             }
                             else
                             {
-                                AppendLog("Warning: Null or invalid device info received");
+                                // Add new device
+                                var deviceVM = new DeviceViewModel(deviceInfo);
+                                AppendLog($"➕ Adding new device: {deviceVM.DisplayName} (Serial: {serial}, State: {deviceInfo.State})");
+                                Devices.Add(deviceVM);
                             }
+                        }
+                        
+                        // Remove devices that are no longer connected
+                        var currentSerials = deviceDict.Keys.ToHashSet(StringComparer.OrdinalIgnoreCase);
+                        var devicesToRemove = currentDevices.Where(d => 
+                            !string.IsNullOrEmpty(d.Serial?.Trim()) && 
+                            !currentSerials.Contains(d.Serial.Trim())).ToList();
+                        
+                        foreach (var deviceToRemove in devicesToRemove)
+                        {
+                            AppendLog($"➖ Removing disconnected device: {deviceToRemove.DisplayName}");
+                            Devices.Remove(deviceToRemove);
                         }
                     }
                     else
                     {
-                        AppendLog("Warning: Null devices list received");
+                        AppendLog("⚠️ Warning: Null devices list received");
+                        Devices.Clear();
                     }
 
                     RefreshComputedProperties();
+                    AppendLog($"✅ Device list updated. Current devices: {Devices.Count}");
                 }
                 catch (Exception ex)
                 {
-                    AppendLog($"Error updating devices: {ex.Message}");
+                    AppendLog($"❌ Error updating devices: {ex.Message}");
                 }
             });
         }
@@ -897,9 +972,27 @@ namespace AdbInstallerApp.ViewModels
 
         // Additional Commands (existing)
         [RelayCommand]
-        private void RefreshAll()
+        private async Task RefreshAll()
         {
-            RefreshRepo();
+            RefreshRepo(); // This is synchronous, no await needed
+            await RefreshDevices(); // This is async, needs await to fix CS4014 warning
+        }
+
+        [RelayCommand]
+        private async Task RefreshDevices()
+        {
+            AppendLog("🔄 Refreshing device list...");
+            try
+            {
+                // Force refresh devices by calling ADB service directly
+                var devices = await _adb.ListDevicesAsync();
+                OnDevicesChanged(devices);
+                AppendLog($"✅ Device list refreshed. Found {devices.Count} device(s).");
+            }
+            catch (Exception ex)
+            {
+                AppendLog($"❌ Error refreshing devices: {ex.Message}");
+            }
         }
 
         [RelayCommand]
@@ -990,7 +1083,7 @@ Current Device Status:
             MessageBox.Show(checklist, "USB Debug Checklist", MessageBoxButton.OK, MessageBoxImage.Information);
         }
 
-        [RelayCommand]
+[RelayCommand]
         private void ShowDeviceDetails()
         {
             if (Devices.Count == 0)
@@ -1006,7 +1099,7 @@ Current Device Status:
             foreach (var device in Devices)
             {
                 details.AppendLine($"Device: {device.DisplayName}");
-                details.AppendLine($"Status: {device.ConnectionStatusIcon} {device.State}");
+                details.AppendLine($"Status: {device.ConnectionStatus} {device.State}");
                 details.AppendLine($"Android: {device.DeviceInfo}");
                 details.AppendLine($"Hardware: {device.HardwareSummary}");
                 details.AppendLine($"Screen: {device.ScreenInfo}");
@@ -1023,6 +1116,69 @@ Current Device Status:
 
             AppendLog(details.ToString());
             MessageBox.Show(details.ToString(), "Device Details", MessageBoxButton.OK, MessageBoxImage.Information);
+        }
+
+        [RelayCommand]
+        private void ShowSingleDeviceDetails(object? parameter)
+        {
+            if (parameter is not DeviceViewModel device)
+            {
+                MessageBox.Show("Invalid device parameter.", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
+                return;
+            }
+
+            var details = new System.Text.StringBuilder();
+            details.AppendLine($"📱 **{device.DisplayName}** - Detailed Information");
+            details.AppendLine(new string('=', 60));
+            details.AppendLine();
+            
+            // Basic Information
+            details.AppendLine("🔍 **BASIC INFORMATION**");
+            details.AppendLine($"   Serial Number: {device.Serial}");
+                            details.AppendLine($"   Connection Status: {device.ConnectionStatus} {device.State}");
+            details.AppendLine($"   Last Updated: {device.LastUpdated}");
+            details.AppendLine();
+            
+            // Android Information
+            details.AppendLine("🤖 **ANDROID SYSTEM**");
+            details.AppendLine($"   Version: {device.DeviceInfo}");
+            details.AppendLine($"   Build Number: {device.BuildInfo}");
+            details.AppendLine($"   Build Type: {device.BuildType}");
+            details.AppendLine();
+            
+            // Hardware Information
+            details.AppendLine("⚙️ **HARDWARE SPECIFICATIONS**");
+            details.AppendLine($"   Architecture: {device.Architecture}");
+            details.AppendLine($"   Hardware Summary: {device.HardwareSummary}");
+            details.AppendLine($"   Screen: {device.ScreenInfo}");
+            details.AppendLine();
+            
+            // Battery & Network
+            details.AppendLine("🔋 **BATTERY & NETWORK**");
+            details.AppendLine($"   Battery: {device.BatteryInfo}");
+            details.AppendLine($"   Network: {device.NetworkInfo}");
+            details.AppendLine();
+            
+            // Security & Developer
+            details.AppendLine("🔒 **SECURITY & DEVELOPER**");
+            details.AppendLine($"   Root Status: {device.RootStatus}");
+            details.AppendLine($"   Security: {device.SecurityStatus}");
+            details.AppendLine($"   Developer Options: {device.DeveloperStatus}");
+            details.AppendLine();
+            
+            // Connection Health
+            details.AppendLine("🏥 **CONNECTION HEALTH**");
+            details.AppendLine($"   Health Status: {device.ConnectionHealth}");
+            details.AppendLine($"   Diagnosis: {device.ConnectionDiagnosis}");
+            details.AppendLine();
+            
+            // Package Information
+            details.AppendLine("📦 **INSTALLED PACKAGES**");
+            details.AppendLine($"   Package Summary: {device.PackageSummary}");
+            details.AppendLine();
+
+            AppendLog($"📊 Showing detailed information for device: {device.DisplayName}");
+            MessageBox.Show(details.ToString(), $"Device Details - {device.DisplayName}", MessageBoxButton.OK, MessageBoxImage.Information);
         }
 
         [RelayCommand]

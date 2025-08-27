@@ -33,23 +33,52 @@ namespace AdbInstallerApp.Services
         {
             var list = new List<DeviceInfo>();
             var (code, stdout, _) = await ProcessRunner.RunAsync(_adbPath, "devices");
-            if (code != 0) return list;
+            
+            if (code != 0) 
+            {
+                return list;
+            }
 
             var lines = stdout.Split(new[] { "\r\n", "\n" }, StringSplitOptions.RemoveEmptyEntries);
+            
             foreach (var line in lines.Skip(1)) // skip header
             {
-                // Format: SERIAL\tSTATE
-                var parts = Regex.Split(line.Trim(), @"\s+");
-                if (parts.Length >= 2)
+                // Format: SERIAL\tSTATE (or SERIAL STATE)
+                // Try multiple parsing approaches
+                string serial;
+                string state;
+                
+                if (line.Contains("\t"))
                 {
-                    var device = new DeviceInfo { Serial = parts[0], State = parts[1] };
-                    if (device.State == "device")
-                    {
-                        await EnrichDeviceInfoAsync(device);
-                    }
-                    list.Add(device);
+                    // Tab-separated format
+                    var tabParts = line.Split('\t');
+                    serial = tabParts[0].Trim();
+                    state = tabParts[1].Trim();
                 }
+                else
+                {
+                    // Space-separated format
+                    var parts = Regex.Split(line.Trim(), @"\s+");
+                    
+                    if (parts.Length >= 2)
+                    {
+                        serial = parts[0].Trim();
+                        state = parts[1].Trim();
+                    }
+                    else
+                    {
+                        continue;
+                    }
+                }
+                
+                var device = new DeviceInfo { Serial = serial, State = state };
+                if (device.State == "device")
+                {
+                    await EnrichDeviceInfoAsync(device);
+                }
+                list.Add(device);
             }
+            
             return list;
         }
 

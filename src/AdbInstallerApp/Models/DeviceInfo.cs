@@ -94,7 +94,7 @@ namespace AdbInstallerApp.Models
         public string CreatedAtText => DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss");
         public string LastUpdatedText => DateTime.Now.ToString("HH:mm:ss");
 
-        // Status Indicators
+        // Status Indicators (Legacy - kept for compatibility)
         public string ConnectionStatusIcon => State switch
         {
             "device" => "🟢",

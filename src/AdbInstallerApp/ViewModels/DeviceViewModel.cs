@@ -23,7 +23,20 @@ namespace AdbInstallerApp.ViewModels
         // Basic Device Information
         public string Serial => Model?.Serial ?? "Unknown";
         public string State => Model?.State ?? "Unknown";
-        public string ConnectionStatusIcon => Model?.ConnectionStatusIcon ?? "⚪";
+        public string ConnectionStatus
+        {
+            get
+            {
+                var state = Model?.State;
+                return state?.ToLower() switch
+                {
+                    "device" => "Ready",
+                    "unauthorized" => "Unauthorized", 
+                    "offline" => "Offline",
+                    _ => "Unknown"
+                };
+            }
+        }
 
         public string DisplayName
         {
@@ -333,6 +346,48 @@ namespace AdbInstallerApp.ViewModels
         public override string ToString()
         {
             return DisplayName;
+        }
+
+        // Method to refresh status when device state changes
+        public void RefreshStatus()
+        {
+            OnPropertyChanged(nameof(ConnectionStatus));
+            OnPropertyChanged(nameof(State));
+        }
+
+        // Method to update device model and refresh UI
+        public void UpdateModel(DeviceInfo newModel)
+        {
+            if (newModel != null)
+            {
+                var oldState = Model?.State;
+                var newState = newModel.State;
+                
+                // Update the model reference
+                var modelField = typeof(DeviceViewModel).GetField("Model", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+                if (modelField != null)
+                {
+                    modelField.SetValue(this, newModel);
+                }
+                
+                // Refresh all properties that depend on the model
+                OnPropertyChanged(nameof(Serial));
+                OnPropertyChanged(nameof(State));
+                OnPropertyChanged(nameof(ConnectionStatus));
+                OnPropertyChanged(nameof(DisplayName));
+                OnPropertyChanged(nameof(DeviceInfo));
+                OnPropertyChanged(nameof(RootStatus));
+                OnPropertyChanged(nameof(SecurityStatus));
+                OnPropertyChanged(nameof(Architecture));
+                OnPropertyChanged(nameof(ScreenInfo));
+                OnPropertyChanged(nameof(BatteryInfo));
+                OnPropertyChanged(nameof(NetworkInfo));
+                OnPropertyChanged(nameof(DeveloperStatus));
+                OnPropertyChanged(nameof(ConnectionHealth));
+                OnPropertyChanged(nameof(HardwareSummary));
+                OnPropertyChanged(nameof(PackageSummary));
+                OnPropertyChanged(nameof(LastUpdated));
+            }
         }
     }
 }

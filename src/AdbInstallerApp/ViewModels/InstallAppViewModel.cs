@@ -6,7 +6,7 @@ namespace AdbInstallerApp.ViewModels
 {
     public partial class InstalledAppViewModel : ObservableObject
     {
-        public InstalledApp Model { get; }
+        public InstalledApp Model { get; } = null!;
 
         public InstalledAppViewModel(InstalledApp model)
         {

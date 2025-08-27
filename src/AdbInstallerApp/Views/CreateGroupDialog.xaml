@@ -5,8 +5,8 @@
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         mc:Ignorable="d"
         Title="Create New Group" 
-        Height="410" 
-        Width="650"
+        Height="320" 
+        Width="480"
         WindowStartupLocation="CenterOwner"
         ResizeMode="NoResize"
         ShowInTaskbar="False"
@@ -14,8 +14,8 @@
     
     <Window.Resources>
         <Style x:Key="ModernTextBoxStyle" TargetType="TextBox">
-            <Setter Property="Padding" Value="12,8"/>
-            <Setter Property="FontSize" Value="14"/>
+            <Setter Property="Padding" Value="8,6"/>
+            <Setter Property="FontSize" Value="13"/>
             <Setter Property="BorderThickness" Value="1"/>
             <Setter Property="BorderBrush" Value="#CCCCCC"/>
             <Setter Property="Background" Value="White"/>
@@ -36,8 +36,8 @@
         </Style>
         
         <Style x:Key="ModernButtonStyle" TargetType="Button">
-            <Setter Property="Padding" Value="16,8"/>
-            <Setter Property="FontSize" Value="14"/>
+            <Setter Property="Padding" Value="12,6"/>
+            <Setter Property="FontSize" Value="13"/>
             <Setter Property="Background" Value="#F0F0F0"/>
             <Setter Property="BorderBrush" Value="#CCCCCC"/>
             <Setter Property="BorderThickness" Value="1"/>
@@ -73,7 +73,7 @@
         </Style>
     </Window.Resources>
     
-    <Grid Margin="12">
+    <Grid Margin="4">
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto"/>
             <RowDefinition Height="*"/>
@@ -81,28 +81,28 @@
         </Grid.RowDefinitions>
         
         <!-- Header -->
-        <StackPanel Grid.Row="0" Margin="0,0,0,12">
+        <StackPanel Grid.Row="0" Margin="0,0,0,4">
             <TextBlock Text="Create New Group" 
-                       FontSize="24" 
+                       FontSize="20" 
                        FontWeight="Bold" 
                        Foreground="#333"
                        HorizontalAlignment="Center"/>
             <TextBlock Text="Enter group details below" 
-                       FontSize="16" 
+                       FontSize="14" 
                        Foreground="#666"
                        HorizontalAlignment="Center"
-                       Margin="0,8,0,0"/>
+                       Margin="0,4,0,0"/>
         </StackPanel>
         
         <!-- Form -->
-        <StackPanel Grid.Row="1" Margin="0,0,0,12">
+        <StackPanel Grid.Row="1" Margin="12,0,12,4">
             <!-- Group Name -->
-            <StackPanel Margin="0,0,0,12">
+            <StackPanel Margin="0,0,0,4">
                 <TextBlock Text="Group Name *" 
-                           FontSize="16" 
+                           FontSize="14" 
                            FontWeight="SemiBold" 
                            Foreground="#333"
-                           Margin="0,0,0,6"/>
+                           Margin="0,0,0,4"/>
                 <TextBox x:Name="GroupNameTextBox"
                          Text="{Binding GroupName, UpdateSourceTrigger=PropertyChanged}"
                          Style="{StaticResource ModernTextBoxStyle}"
@@ -111,34 +111,33 @@
                          LostFocus="TextBox_LostFocus"
                          TextChanged="TextBox_TextChanged"/>
                 <TextBlock Text="{Binding GroupName.Length, StringFormat='{}{0}/100 characters'}" 
-                           FontSize="14" 
+                           FontSize="12" 
                            Foreground="#999"
                            HorizontalAlignment="Right"
-                           Margin="0,4,0,0"/>
+                           Margin="0,3,0,0"/>
             </StackPanel>
             
             <!-- Description -->
             <StackPanel>
                 <TextBlock Text="Description" 
-                           FontSize="16" 
+                           FontSize="14" 
                            FontWeight="SemiBold" 
                            Foreground="#333"
-                           Margin="0,0,0,6"/>
+                           Margin="0,0,0,4"/>
                 <TextBox x:Name="DescriptionTextBox"
                          Text="{Binding Description, UpdateSourceTrigger=PropertyChanged}"
                          Style="{StaticResource ModernTextBoxStyle}"
                          MaxLength="500"
-
                          TextWrapping="Wrap"
                          AcceptsReturn="True"
                          VerticalScrollBarVisibility="Auto"
                          GotFocus="TextBox_GotFocus"
                          LostFocus="TextBox_LostFocus"/>
                 <TextBlock Text="{Binding Description.Length, StringFormat='{}{0}/500 characters'}" 
-                           FontSize="14" 
+                           FontSize="12" 
                            Foreground="#999"
                            HorizontalAlignment="Right"
-                           Margin="0,4,0,0"/>
+                           Margin="0,3,0,0"/>
             </StackPanel>
         </StackPanel>
         
@@ -149,12 +148,13 @@
             <Button Content="Cancel" 
                     Style="{StaticResource ModernButtonStyle}"
                     Click="CancelButton_Click"
-                    Margin="0,0,12,0"/>
+                    Margin="0,0,8,8"/>
             <Button x:Name="CreateGroupButton"
                     Content="Create Group" 
                     Style="{StaticResource AccentButtonStyle}"
                     Click="ConfirmButton_Click"
-                    IsEnabled="{Binding IsGroupNameValid}"/>
+                    IsEnabled="{Binding IsGroupNameValid}"
+                    Margin="0,0,8,8"/>
         </StackPanel>
     </Grid>
 </Window>
