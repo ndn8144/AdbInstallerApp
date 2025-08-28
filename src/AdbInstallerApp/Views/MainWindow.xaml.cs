@@ -34,6 +34,16 @@ namespace AdbInstallerApp.Views
 
             // Handle keyboard shortcuts
             this.KeyDown += MainWindow_KeyDown;
+            this.PreviewKeyDown += MainWindow_PreviewKeyDown;
+        }
+
+        private void MainWindow_PreviewKeyDown(object sender, KeyEventArgs e)
+        {
+            if (DataContext is not MainViewModel viewModel) return;
+
+            // Handle enhanced keyboard shortcuts through KeyboardShortcutService
+            var handled = viewModel.KeyboardShortcuts.HandleKeyDown(e);
+            if (handled) return;
         }
 
         private void MainWindow_KeyDown(object sender, KeyEventArgs e)

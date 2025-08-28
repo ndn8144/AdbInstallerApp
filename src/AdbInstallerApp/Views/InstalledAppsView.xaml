@@ -221,7 +221,7 @@
                 </Border>
 
                 <!-- Apps List -->
-                <DataGrid ItemsSource="{Binding FilteredApps}" 
+                <DataGrid ItemsSource="{Binding FilteredInstalledApps}" 
                           AutoGenerateColumns="False"
                           CanUserAddRows="False" CanUserDeleteRows="False"
                           CanUserResizeRows="False" CanUserSortColumns="True"
@@ -345,7 +345,7 @@
                          VerticalAlignment="Center"/>
                 
                 <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
-                    <TextBlock Text="{Binding FilteredApps.Count, StringFormat='Showing: {0}'}" 
+                    <TextBlock Text="{Binding FilteredInstalledApps.Count, StringFormat='Showing: {0}'}" 
                              FontSize="14" FontWeight="Medium"
                              Foreground="{StaticResource TextSecondaryBrush}"/>
                 </StackPanel>

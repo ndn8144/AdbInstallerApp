@@ -20,14 +20,25 @@ namespace AdbInstallerApp.ViewModels
         private readonly ApkExportService _apkExporter = null!;
         private readonly DeviceMonitor _monitor = null!;
         private readonly ApkRepoIndexer _repo = null!;
-        private readonly InstallOrchestrator _installer = null!;
+        public readonly InstallOrchestrator _installer = null!;
         private readonly ApkValidationService _apkValidator = null!;
+        private readonly MultiGroupInstallOrchestrator _multiGroupInstaller = null!;
         private System.Threading.Timer? _refreshTimer;
+
+        // Multi-Group Install ViewModel
+        public MultiGroupInstallViewModel MultiGroupInstall { get; private set; } = null!;
+
+        // Enhanced Services
+        public OptimizedProgressService OptimizedProgress { get; } = OptimizedProgressService.Instance;
+        public EnhancedInstallQueue InstallQueue { get; private set; } = null!;
+        public NotificationService NotificationService { get; } = new();
+        public KeyboardShortcutService KeyboardShortcuts { get; private set; } = null!;
 
         public ObservableCollection<DeviceViewModel> Devices { get; } = new();
         public ObservableCollection<ApkItemViewModel> ApkFiles { get; } = new();
         public ObservableCollection<ApkGroupViewModel> ApkGroups { get; } = new();
         public ObservableCollection<InstalledAppViewModel> InstalledApps { get; } = new();
+        public ObservableCollection<InstalledAppViewModel> FilteredInstalledApps { get; } = new();
 
         [ObservableProperty]
         private bool _isLoadingApps = false;
@@ -95,8 +106,8 @@ namespace AdbInstallerApp.ViewModels
         private string _newGroupDescription = string.Empty;
 
         // Installed Apps properties
-        public string InstalledAppsCountText => $"{InstalledApps.Count} Apps";
-        public int SelectedInstalledAppsCount => InstalledApps.Count(a => a.IsSelected);
+        public string InstalledAppsCountText => $"{FilteredInstalledApps.Count} Apps";
+        public int SelectedInstalledAppsCount => FilteredInstalledApps.Count(a => a.IsSelected);
         public string SelectedInstalledAppsCountText => SelectedInstalledAppsCount > 0 ? $"{SelectedInstalledAppsCount} app(s) selected" : "No apps selected";
 
         // Computed properties for display
@@ -131,11 +142,22 @@ namespace AdbInstallerApp.ViewModels
 
                 _monitor = new DeviceMonitor(_adb);
                 _repo = new ApkRepoIndexer();
-                _installer = new InstallOrchestrator(_adb);
-                _appInventory = new AppInventoryService(_adb);
-                _apkExporter = new ApkExportService(_adb);
                 _apkValidator = new ApkValidationService();
-                AppendLog("✅ App inventory and export services initialized");
+                _installer = new InstallOrchestrator(_adb);
+                _multiGroupInstaller = new MultiGroupInstallOrchestrator(_adb, _installer);
+
+                InstallQueue = new EnhancedInstallQueue(_installer, maxConcurrentOperations: 2);
+                KeyboardShortcuts = new KeyboardShortcutService(InstallQueue, OptimizedProgress);
+
+                MultiGroupInstall = new MultiGroupInstallViewModel(_multiGroupInstaller, this);
+
+                ApkGroups.CollectionChanged += (s, e) => MultiGroupInstall.RefreshAvailableGroupsCommand.Execute(null);
+
+                InstallQueue.OperationCompleted += OnInstallOperationCompleted;
+                InstallQueue.OperationFailed += OnInstallOperationFailed;
+                InstallQueue.QueueEmpty += OnInstallQueueEmpty;
+
+                AppendLog("✅ App inventory, export, and multi-group installation services initialized");
 
                 ApkRepoPath = _settings.ApkRepoPath;
                 OptReinstall = _settings.Reinstall;
@@ -224,79 +246,60 @@ namespace AdbInstallerApp.ViewModels
 
         private void OnDevicesChanged(List<DeviceInfo> devices)
         {
-            Application.Current.Dispatcher.Invoke(() =>
+            System.Windows.Application.Current.Dispatcher.Invoke(() =>
             {
-                try
+                Devices.Clear();
+                foreach (var device in devices)
                 {
-                    AppendLog($"🔄 Device list changed. Received {devices?.Count ?? 0} device(s)");
-                    
-                    if (devices != null)
-                    {
-                        // Fix nullability warning by filtering out null devices first
-                        var validDevices = devices.Where(d => d != null && !string.IsNullOrEmpty(d.Serial?.Trim())).ToList();
-                        
-                        // Create dictionary with non-null keys to fix CS8714 and CS8621 warnings
-                        var deviceDict = validDevices.ToDictionary(
-                            d => d.Serial!.Trim(), // Safe to use ! since we filtered nulls
-                            d => d, 
-                            StringComparer.OrdinalIgnoreCase);
-                        var currentDevices = Devices.ToList();
-                        
-                        // Update existing devices or add new ones
-                        foreach (var deviceInfo in validDevices) // Use validDevices instead of devices
-                        {
-                            var serial = deviceInfo.Serial!.Trim(); // Safe to use ! since we filtered
-                            var existingDevice = currentDevices.FirstOrDefault(d => 
-                                d.Serial?.Trim().Equals(serial, StringComparison.OrdinalIgnoreCase) == true);
-                            
-                            if (existingDevice != null)
-                            {
-                                // Update existing device
-                                var oldState = existingDevice.State;
-                                var newState = deviceInfo.State;
-                                
-                                if (oldState != newState)
-                                {
-                                    AppendLog($"📱 Device state changed: {existingDevice.DisplayName} - {oldState} → {newState}");
-                                }
-                                
-                                existingDevice.UpdateModel(deviceInfo);
-                            }
-                            else
-                            {
-                                // Add new device
-                                var deviceVM = new DeviceViewModel(deviceInfo);
-                                AppendLog($"➕ Adding new device: {deviceVM.DisplayName} (Serial: {serial}, State: {deviceInfo.State})");
-                                Devices.Add(deviceVM);
-                            }
-                        }
-                        
-                        // Remove devices that are no longer connected
-                        var currentSerials = deviceDict.Keys.ToHashSet(StringComparer.OrdinalIgnoreCase);
-                        var devicesToRemove = currentDevices.Where(d => 
-                            !string.IsNullOrEmpty(d.Serial?.Trim()) && 
-                            !currentSerials.Contains(d.Serial.Trim())).ToList();
-                        
-                        foreach (var deviceToRemove in devicesToRemove)
-                        {
-                            AppendLog($"➖ Removing disconnected device: {deviceToRemove.DisplayName}");
-                            Devices.Remove(deviceToRemove);
-                        }
-                    }
-                    else
-                    {
-                        AppendLog("⚠️ Warning: Null devices list received");
-                        Devices.Clear();
-                    }
-
-                    RefreshComputedProperties();
-                    AppendLog($"✅ Device list updated. Current devices: {Devices.Count}");
+                    Devices.Add(new DeviceViewModel(device));
                 }
-                catch (Exception ex)
-                {
-                    AppendLog($"❌ Error updating devices: {ex.Message}");
-                }
+                AppendLog($"📱 Devices updated: {Devices.Count} device(s) connected");
             });
+        }
+
+        private void OnInstallOperationCompleted(object? sender, EnhancedInstallQueue.InstallQueueEventArgs e)
+        {
+            var operation = e.Operation;
+            var duration = operation.EndTime - operation.StartTime;
+            
+            NotificationService.ShowCompletionNotification(
+                "Installation Complete",
+                $"Successfully installed {GetOperationDescription(operation)} in {duration?.TotalSeconds:F1}s",
+                NotificationType.Success);
+                
+            AppendLog($"✅ Installation completed: {GetOperationDescription(operation)}");
+        }
+
+        private void OnInstallOperationFailed(object? sender, EnhancedInstallQueue.InstallQueueEventArgs e)
+        {
+            var operation = e.Operation;
+            
+            NotificationService.ShowCompletionNotification(
+                "Installation Failed",
+                $"Failed to install {GetOperationDescription(operation)}: {operation.ErrorMessage}",
+                NotificationType.Error);
+                
+            AppendLog($"❌ Installation failed: {GetOperationDescription(operation)} - {operation.ErrorMessage}");
+        }
+
+        private void OnInstallQueueEmpty(object? sender, EnhancedInstallQueue.InstallQueueEventArgs e)
+        {
+            NotificationService.ShowCompletionNotification(
+                "All Installations Complete",
+                "All queued installations have been processed",
+                NotificationType.Success);
+                
+            AppendLog("🎉 All installations in queue completed");
+        }
+
+        private string GetOperationDescription(EnhancedInstallQueue.QueuedInstallOperation operation)
+        {
+            return operation.Type switch
+            {
+                EnhancedInstallQueue.InstallOperationType.SingleApk => $"{operation.ApkItems.Count} APK(s)",
+                EnhancedInstallQueue.InstallOperationType.GroupInstall => $"{operation.ApkGroups.Count} group(s)",
+                _ => "operation"
+            };
         }
 
         private void RebuildApkList()
@@ -970,6 +973,9 @@ namespace AdbInstallerApp.ViewModels
         [RelayCommand]
         private void NavigateToSettings() => CurrentModule = "Settings";
 
+        [RelayCommand]
+        private void NavigateToMultiGroupInstall() => CurrentModule = "MultiGroupInstall";
+
         // Additional Commands (existing)
         [RelayCommand]
         private async Task RefreshAll()
@@ -1208,13 +1214,23 @@ Current Device Status:
                 Application.Current.Dispatcher.Invoke(() =>
                 {
                     InstalledApps.Clear();
+                    
+                    // Use HashSet for O(1) duplicate checking during UI updates
+                    var addedPackages = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+                    
                     foreach (var app in apps)
                     {
-                        var appVM = new InstalledAppViewModel(app);
-                        appVM.PropertyChanged += OnInstalledAppPropertyChanged;
-                        InstalledApps.Add(appVM);
+                        // Skip duplicates at UI level as final safety check
+                        if (!addedPackages.Contains(app.PackageName))
+                        {
+                            var appVM = new InstalledAppViewModel(app);
+                            appVM.PropertyChanged += OnInstalledAppPropertyChanged;
+                            InstalledApps.Add(appVM);
+                            addedPackages.Add(app.PackageName);
+                        }
                     }
 
+                    ApplyInstalledAppsFilter();
                     RefreshInstalledAppsComputedProperties();
                 });
 
@@ -1233,7 +1249,7 @@ Current Device Status:
         [RelayCommand]
         private void SelectAllInstalledApps()
         {
-            foreach (var app in InstalledApps)
+            foreach (var app in FilteredInstalledApps)
             {
                 app.IsSelected = true;
             }
@@ -1243,10 +1259,59 @@ Current Device Status:
         [RelayCommand]
         private void ClearInstalledAppsSelection()
         {
-            foreach (var app in InstalledApps)
+            foreach (var app in FilteredInstalledApps)
             {
                 app.IsSelected = false;
             }
+            RefreshInstalledAppsComputedProperties();
+        }
+
+        private void ApplyInstalledAppsFilter()
+        {
+            var filtered = InstalledApps.AsEnumerable();
+
+            // Apply app type filter
+            if (ShowUserAppsOnly && !ShowSystemApps)
+            {
+                filtered = filtered.Where(app => !app.IsSystemApp);
+            }
+            else if (!ShowUserAppsOnly && ShowSystemApps)
+            {
+                filtered = filtered.Where(app => app.IsSystemApp);
+            }
+
+            // Apply keyword filter
+            if (!string.IsNullOrWhiteSpace(AppFilterKeyword))
+            {
+                var keyword = AppFilterKeyword.Trim().ToLowerInvariant();
+                filtered = filtered.Where(app =>
+                    app.PackageName.ToLowerInvariant().Contains(keyword) ||
+                    app.DisplayName.ToLowerInvariant().Contains(keyword));
+            }
+
+            // Update filtered collection
+            FilteredInstalledApps.Clear();
+            foreach (var app in filtered.OrderBy(a => a.DisplayName))
+            {
+                FilteredInstalledApps.Add(app);
+            }
+        }
+
+        partial void OnShowUserAppsOnlyChanged(bool value)
+        {
+            ApplyInstalledAppsFilter();
+            RefreshInstalledAppsComputedProperties();
+        }
+
+        partial void OnShowSystemAppsChanged(bool value)
+        {
+            ApplyInstalledAppsFilter();
+            RefreshInstalledAppsComputedProperties();
+        }
+
+        partial void OnAppFilterKeywordChanged(string value)
+        {
+            ApplyInstalledAppsFilter();
             RefreshInstalledAppsComputedProperties();
         }
 
@@ -1662,5 +1727,6 @@ Current Device Status:
 
             return false;
         }
+
     }
 }

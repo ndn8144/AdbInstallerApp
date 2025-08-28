@@ -51,8 +51,14 @@ namespace AdbInstallerApp.Services
                     });
 
                     var batchResults = await Task.WhenAll(batchTasks);
-                    results.AddRange(batchResults.Where(app => app != null)!);
-                    
+                    var validApps = batchResults.Where(app => app != null).Cast<InstalledApp>();
+                
+                    // Deduplicate within batch using HashSet for O(1) lookup
+                    var existingPackages = new HashSet<string>(results.Select(r => r.PackageName), StringComparer.OrdinalIgnoreCase);
+                    var uniqueApps = validApps.Where(app => !existingPackages.Contains(app.PackageName)).ToList();
+                
+                    results.AddRange(uniqueApps);
+                
                     // Allow UI updates between batches
                     await Task.Delay(1, ct);
                 }
@@ -294,7 +300,9 @@ namespace AdbInstallerApp.Services
 
         private IReadOnlyList<InstalledApp> ApplyFilters(List<InstalledApp> apps, AppQueryOptions opts)
         {
-            var filtered = apps.AsEnumerable();
+            // Final deduplication using HashSet with custom comparer
+            var uniqueApps = new HashSet<InstalledApp>(apps, new PackageNameEqualityComparer()).ToList();
+            var filtered = uniqueApps.AsEnumerable();
 
             // Filter by app type
             if (opts.OnlyUserApps)
@@ -317,6 +325,22 @@ namespace AdbInstallerApp.Services
 
             // Sort by display name
             return filtered.OrderBy(app => app.DisplayName).ToList();
+        }
+
+        // Custom equality comparer for final deduplication
+        private sealed class PackageNameEqualityComparer : IEqualityComparer<InstalledApp>
+        {
+            public bool Equals(InstalledApp? x, InstalledApp? y)
+            {
+                if (x is null && y is null) return true;
+                if (x is null || y is null) return false;
+                return x.PackageName.Equals(y.PackageName, StringComparison.OrdinalIgnoreCase);
+            }
+
+            public int GetHashCode(InstalledApp obj)
+            {
+                return obj.PackageName.GetHashCode(StringComparison.OrdinalIgnoreCase);
+            }
         }
 
         private record PackageEntry(string PackageName, string BasePath);

@@ -17,6 +17,7 @@
         <converters:IntToVisibilityConverter x:Key="IntToVisibilityConverter"/>
         <converters:StringToVisibilityConverter x:Key="StringToVisibilityConverter"/>
         <converters:MultiValueConverter x:Key="MultiValueConverter"/>
+        <converters:IndexToNumberConverter x:Key="IndexToNumberConverter"/>
     </Window.Resources>
     
     <Window.DataContext>
@@ -109,6 +110,12 @@
                                 Style="{StaticResource NavigationButtonStyle}"
                                 Command="{Binding NavigateToInstallQueueCommand}"
                                 Tag="InstallQueue"/>
+                        
+                        <Button Content="🚀 Multi-Group Install" 
+                                Style="{StaticResource NavigationButtonStyle}"
+                                Command="{Binding NavigateToMultiGroupInstallCommand}"
+                                Tag="MultiGroupInstall"
+                                ToolTip="Install multiple APK groups sequentially with progress tracking"/>
                         
                         <!-- Tools -->
                         <TextBlock Text="Tools" 
@@ -1566,43 +1573,374 @@
                     </StackPanel>
                 </Grid>
                 
+                <!-- Multi-Group Install Module -->
+                <Grid x:Name="MultiGroupInstallContent" 
+                      Visibility="{Binding CurrentModule, Converter={StaticResource ModuleToVisibilityConverter}, ConverterParameter='MultiGroupInstall'}">
+                    <StackPanel>
+                        <!-- Header Section -->
+                        <Border CornerRadius="12" Padding="20,15" Margin="0,0,0,20" 
+                                Effect="{StaticResource CardShadow}">
+                            <Border.Background>
+                                <LinearGradientBrush StartPoint="0,0" EndPoint="1,1">
+                                    <GradientStop Color="#667eea" Offset="0"/>
+                                    <GradientStop Color="#764ba2" Offset="1"/>
+                                </LinearGradientBrush>
+                            </Border.Background>
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="Auto"/>
+                                </Grid.ColumnDefinitions>
+                                
+                                <StackPanel Grid.Column="0" Orientation="Vertical">
+                                    <TextBlock Text="🚀 Multi-Group APK Installation" 
+                                               FontSize="24" FontWeight="Bold" 
+                                               Foreground="White"/>
+                                    <TextBlock Text="{Binding MultiGroupInstall.CurrentStatus}" 
+                                               FontSize="14" 
+                                               Foreground="White"
+                                               Opacity="0.8"
+                                               Margin="0,5,0,0"/>
+                                </StackPanel>
+
+                                <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
+                                    <Button Content="🚀 Start Installation" 
+                                            Command="{Binding MultiGroupInstall.StartInstallationCommand}"
+                                            Style="{StaticResource AccentButtonStyle}"
+                                            Margin="0,0,10,0"
+                                            MinWidth="150"/>
+                                    <Button Content="⏹️ Cancel" 
+                                            Command="{Binding MultiGroupInstall.CancelInstallationCommand}"
+                                            Style="{StaticResource ModernButtonStyle}"
+                                            Margin="0,0,10,0"
+                                            MinWidth="100"/>
+                                    <Button Content="🔄 Refresh Groups" 
+                                            Command="{Binding MultiGroupInstall.RefreshAvailableGroupsCommand}"
+                                            Style="{StaticResource ModernButtonStyle}"
+                                            MinWidth="120"/>
+                                </StackPanel>
+                            </Grid>
+                        </Border>
+
+                        <!-- Main Content Area -->
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="20"/>
+                                <ColumnDefinition Width="*"/>
+                            </Grid.ColumnDefinitions>
+
+                            <!-- Available Groups Panel -->
+                            <Border Grid.Column="0" Background="White" CornerRadius="8" Padding="20" 
+                                    Effect="{StaticResource CardShadow}">
+                                <Grid>
+                                    <Grid.RowDefinitions>
+                                        <RowDefinition Height="Auto"/>
+                                        <RowDefinition Height="Auto"/>
+                                        <RowDefinition Height="*"/>
+                                    </Grid.RowDefinitions>
+
+                                    <TextBlock Grid.Row="0" Text="📦 Available APK Groups" 
+                                               FontSize="18" FontWeight="SemiBold" Margin="0,0,0,15"/>
+
+                                    <StackPanel Grid.Row="1" Orientation="Horizontal" Margin="0,0,0,10">
+                                        <Button Content="Select All" 
+                                                Command="{Binding MultiGroupInstall.SelectAllGroupsCommand}"
+                                                Style="{StaticResource ModernButtonStyle}"
+                                                Margin="0,0,10,0"/>
+                                        <TextBlock Text="{Binding MultiGroupInstall.AvailableGroups.Count, StringFormat=\{0\} groups available}" 
+                                                   VerticalAlignment="Center"
+                                                   Foreground="#666"/>
+                                    </StackPanel>
+
+                                    <!-- Available Groups List -->
+                                    <ListBox Grid.Row="2" ItemsSource="{Binding MultiGroupInstall.AvailableGroups}"
+                                             ScrollViewer.VerticalScrollBarVisibility="Auto"
+                                             Background="Transparent"
+                                             BorderThickness="1"
+                                             BorderBrush="#E0E0E0">
+                                        <ListBox.ItemTemplate>
+                                            <DataTemplate>
+                                                <Border Background="White"
+                                                        BorderBrush="#E0E0E0"
+                                                        BorderThickness="1"
+                                                        CornerRadius="4"
+                                                        Margin="2"
+                                                        Padding="12">
+                                                    <Grid>
+                                                        <Grid.ColumnDefinitions>
+                                                            <ColumnDefinition Width="*"/>
+                                                            <ColumnDefinition Width="Auto"/>
+                                                        </Grid.ColumnDefinitions>
+
+                                                        <StackPanel Grid.Column="0">
+                                                            <TextBlock Text="{Binding GroupName}" 
+                                                                       FontWeight="Medium"
+                                                                       FontSize="14"
+                                                                       Foreground="#212121"/>
+                                                            <TextBlock Text="{Binding Description}" 
+                                                                       FontSize="12"
+                                                                       Foreground="#757575"
+                                                                       TextTrimming="CharacterEllipsis"
+                                                                       Margin="0,2,0,0"/>
+                                                            <TextBlock Text="{Binding ApkCountText}" 
+                                                                       FontSize="11"
+                                                                       Foreground="#2196F3"
+                                                                       Margin="0,2,0,0"/>
+                                                        </StackPanel>
+
+                                                        <Button Grid.Column="1"
+                                                                Content="➕ Add"
+                                                                Command="{Binding DataContext.MultiGroupInstall.AddGroupToQueueCommand, RelativeSource={RelativeSource AncestorType=Grid, AncestorLevel=6}}"
+                                                                CommandParameter="{Binding}"
+                                                                Style="{StaticResource ModernButtonStyle}"
+                                                                FontSize="12"
+                                                                MinWidth="60"
+                                                                VerticalAlignment="Center"/>
+                                                    </Grid>
+                                                </Border>
+                                            </DataTemplate>
+                                        </ListBox.ItemTemplate>
+                                    </ListBox>
+                                </Grid>
+                            </Border>
+
+                            <!-- Installation Queue Panel -->
+                            <Border Grid.Column="2" Background="White" CornerRadius="8" Padding="20" 
+                                    Effect="{StaticResource CardShadow}">
+                                <Grid>
+                                    <Grid.RowDefinitions>
+                                        <RowDefinition Height="Auto"/>
+                                        <RowDefinition Height="Auto"/>
+                                        <RowDefinition Height="*"/>
+                                    </Grid.RowDefinitions>
+
+                                    <TextBlock Grid.Row="0" Text="🎯 Installation Queue" 
+                                               FontSize="18" FontWeight="SemiBold" Margin="0,0,0,15"/>
+
+                                    <StackPanel Grid.Row="1" Orientation="Horizontal" Margin="0,0,0,10">
+                                        <Button Content="Clear Queue" 
+                                                Command="{Binding MultiGroupInstall.ClearQueueCommand}"
+                                                Style="{StaticResource ModernButtonStyle}"
+                                                Margin="0,0,10,0"/>
+                                        <TextBlock Text="{Binding MultiGroupInstall.SelectedGroups.Count, StringFormat=\{0\} groups queued}" 
+                                                   VerticalAlignment="Center"
+                                                   Foreground="#666"/>
+                                    </StackPanel>
+
+                                    <!-- Installation Queue List -->
+                                    <ListBox Grid.Row="2" ItemsSource="{Binding MultiGroupInstall.SelectedGroups}"
+                                             ScrollViewer.VerticalScrollBarVisibility="Auto"
+                                             Background="Transparent"
+                                             BorderThickness="1"
+                                             BorderBrush="#E0E0E0"
+                                             AlternationCount="100">
+                                        <ListBox.ItemTemplate>
+                                            <DataTemplate>
+                                                <Border Background="#E3F2FD"
+                                                        BorderBrush="#2196F3"
+                                                        BorderThickness="1"
+                                                        CornerRadius="4"
+                                                        Margin="2"
+                                                        Padding="12">
+                                                    <Grid>
+                                                        <Grid.ColumnDefinitions>
+                                                            <ColumnDefinition Width="Auto"/>
+                                                            <ColumnDefinition Width="*"/>
+                                                            <ColumnDefinition Width="Auto"/>
+                                                        </Grid.ColumnDefinitions>
+
+                                                        <TextBlock Grid.Column="0" 
+                                                                   Text="{Binding RelativeSource={RelativeSource AncestorType=ListBoxItem}, Path=(ItemsControl.AlternationIndex), Converter={StaticResource IndexToNumberConverter}}"
+                                                                   FontWeight="Bold"
+                                                                   FontSize="16"
+                                                                   Foreground="#1976D2"
+                                                                   VerticalAlignment="Center"
+                                                                   Margin="0,0,12,0"/>
+
+                                                        <StackPanel Grid.Column="1">
+                                                            <TextBlock Text="{Binding GroupName}" 
+                                                                       FontWeight="Medium"
+                                                                       FontSize="14"
+                                                                       Foreground="#212121"/>
+                                                            <TextBlock Text="{Binding ApkCountText}" 
+                                                                       FontSize="12"
+                                                                       Foreground="#1976D2"
+                                                                       Margin="0,2,0,0"/>
+                                                        </StackPanel>
+
+                                                        <Button Grid.Column="2"
+                                                                Content="❌"
+                                                                Command="{Binding DataContext.MultiGroupInstall.RemoveGroupFromQueueCommand, RelativeSource={RelativeSource AncestorType=Grid, AncestorLevel=6}}"
+                                                                CommandParameter="{Binding}"
+                                                                Style="{StaticResource ModernButtonStyle}"
+                                                                FontSize="12"
+                                                                MinWidth="30"
+                                                                VerticalAlignment="Center"/>
+                                                    </Grid>
+                                                </Border>
+                                            </DataTemplate>
+                                        </ListBox.ItemTemplate>
+                                    </ListBox>
+                                </Grid>
+                            </Border>
+                        </Grid>
+
+                        <!-- Progress Section -->
+                        <Border Background="White" CornerRadius="8" Padding="20" Margin="0,20,0,0" 
+                                Effect="{StaticResource CardShadow}"
+                                Visibility="{Binding MultiGroupInstall.IsInstalling, Converter={StaticResource BooleanToVisibilityConverter}}">
+                            <StackPanel>
+                                <TextBlock Text="📊 Installation Progress" 
+                                           FontSize="18" FontWeight="SemiBold" Margin="0,0,0,15"/>
+
+                                <!-- Overall Progress -->
+                                <Grid Margin="0,0,0,15">
+                                    <Grid.RowDefinitions>
+                                        <RowDefinition Height="Auto"/>
+                                        <RowDefinition Height="Auto"/>
+                                    </Grid.RowDefinitions>
+                                    
+                                    <TextBlock Grid.Row="0" Text="Overall Progress" FontWeight="Medium" Margin="0,0,0,5"/>
+                                    <ProgressBar Grid.Row="1" Value="{Binding MultiGroupInstall.OverallProgress}" 
+                                                 Maximum="100" Height="8" 
+                                                 Background="#E0E0E0" Foreground="#4CAF50"/>
+                                </Grid>
+
+                                <!-- Current Group Progress -->
+                                <Grid Margin="0,0,0,15">
+                                    <Grid.RowDefinitions>
+                                        <RowDefinition Height="Auto"/>
+                                        <RowDefinition Height="Auto"/>
+                                    </Grid.RowDefinitions>
+                                    
+                                    <TextBlock Grid.Row="0" Text="{Binding MultiGroupInstall.CurrentGroupProgressText}" FontWeight="Medium" Margin="0,0,0,5"/>
+                                    <ProgressBar Grid.Row="1" Value="{Binding MultiGroupInstall.CurrentGroupProgress}" 
+                                                 Maximum="100" Height="8" 
+                                                 Background="#E0E0E0" Foreground="#2196F3"/>
+                                </Grid>
+
+                                <!-- Detailed Progress -->
+                                <ScrollViewer MaxHeight="200" VerticalScrollBarVisibility="Auto">
+                                    <ItemsControl ItemsSource="{Binding MultiGroupInstall.DetailedProgress}">
+                                        <ItemsControl.ItemTemplate>
+                                            <DataTemplate>
+                                                <TextBlock Text="{Binding}" FontSize="12" Foreground="#666" Margin="0,1"/>
+                                            </DataTemplate>
+                                        </ItemsControl.ItemTemplate>
+                                    </ItemsControl>
+                                </ScrollViewer>
+                            </StackPanel>
+                        </Border>
+                    </StackPanel>
+                </Grid>
+                
                 <!-- Other modules can be added here with similar structure -->
                 
                 </Grid>
             </Border>
         </Grid>
         
-        <!-- Bottom Status Bar -->
+        <!-- Bottom Status Bar with Centralized Progress -->
         <Border Grid.Row="2" 
                 Background="White" 
                 BorderBrush="{StaticResource DividerBrush}" 
                 BorderThickness="0,1,0,0"
                 Padding="20,12">
             <Grid>
-                <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="*"/>
-                    <ColumnDefinition Width="Auto"/>
-                </Grid.ColumnDefinitions>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/>
+                </Grid.RowDefinitions>
                 
-                <TextBlock Grid.Column="0" 
-                           Text="{Binding StatusBarText, FallbackValue='Ready'}" 
-                           VerticalAlignment="Center" 
-                           Foreground="#666"/>
+                <!-- Main Status Row -->
+                <Grid Grid.Row="0">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="Auto"/>
+                    </Grid.ColumnDefinitions>
+                    
+                    <!-- Status Text and Progress Info -->
+                    <StackPanel Grid.Column="0" Orientation="Horizontal" VerticalAlignment="Center">
+                        <!-- Normal Status (when no operation) -->
+                        <TextBlock Text="{Binding StatusBarText, FallbackValue='Ready'}" 
+                                   VerticalAlignment="Center" 
+                                   Foreground="#666"
+                                   Visibility="{Binding CentralProgress.IsOperationInProgress, Converter={StaticResource BooleanToVisibilityConverter}, ConverterParameter=Invert}"/>
+                        
+                        <!-- Progress Status (when operation in progress) -->
+                        <StackPanel Orientation="Horizontal" 
+                                    Visibility="{Binding CentralProgress.IsOperationInProgress, Converter={StaticResource BooleanToVisibilityConverter}}">
+                            <!-- Operation Icon -->
+                            <TextBlock Text="⚡" FontSize="16" VerticalAlignment="Center" Margin="0,0,8,0" 
+                                       Foreground="#2196F3"/>
+                            
+                            <!-- Operation Name -->
+                            <TextBlock Text="{Binding CentralProgress.CurrentOperationName}" 
+                                       FontWeight="Medium" VerticalAlignment="Center" 
+                                       Foreground="#333" Margin="0,0,8,0"/>
+                            
+                            <!-- Progress Percentage -->
+                            <TextBlock Text="{Binding CentralProgress.CurrentProgress, StringFormat='{}{0:F1}%'}" 
+                                       FontWeight="Bold" VerticalAlignment="Center" 
+                                       Foreground="#2196F3" Margin="0,0,8,0"/>
+                            
+                            <!-- ETA (if available) -->
+                            <TextBlock Text="{Binding CentralProgress.EstimatedTimeRemaining, StringFormat='ETA: {0}'}" 
+                                       VerticalAlignment="Center" Foreground="#666" 
+                                       Visibility="{Binding CentralProgress.EstimatedTimeRemaining, Converter={StaticResource StringToVisibilityConverter}}"/>
+                        </StackPanel>
+                    </StackPanel>
+                    
+                    <!-- Action Buttons -->
+                    <StackPanel Grid.Column="1" Orientation="Horizontal">
+                        <Button Content="🔄 Refresh All" 
+                                Style="{StaticResource ModernButtonStyle}"
+                                Command="{Binding RefreshAllCommand}"
+                                Margin="0,0,8,0" Padding="12,6"
+                                IsEnabled="{Binding CentralProgress.IsOperationInProgress, Converter={StaticResource BooleanToVisibilityConverter}, ConverterParameter=Invert}"/>
+                        <Button Content="📊 Status" 
+                                Style="{StaticResource ModernButtonStyle}"
+                                Command="{Binding ShowStatusCommand}"
+                                Margin="0,0,8,0" Padding="12,6"/>
+                        <Button Content="? Help" 
+                                Style="{StaticResource ModernButtonStyle}"
+                                Command="{Binding ShowHelpCommand}"
+                                Padding="12,6"/>
+                    </StackPanel>
+                </Grid>
                 
-                <StackPanel Grid.Column="1" Orientation="Horizontal">
-                    <Button Content="🔄 Refresh All" 
-                            Style="{StaticResource ModernButtonStyle}"
-                            Command="{Binding RefreshAllCommand}"
-                            Margin="0,0,8,0" Padding="12,6"/>
-                    <Button Content="📊 Status" 
-                            Style="{StaticResource ModernButtonStyle}"
-                            Command="{Binding ShowStatusCommand}"
-                            Margin="0,0,8,0" Padding="12,6"/>
-                    <Button Content="? Help" 
-                            Style="{StaticResource ModernButtonStyle}"
-                            Command="{Binding ShowHelpCommand}"
-                            Padding="12,6"/>
-                </StackPanel>
+                <!-- Progress Bar Row (only visible during operations) -->
+                <Grid Grid.Row="1" Margin="0,8,0,0"
+                      Visibility="{Binding CentralProgress.IsOperationInProgress, Converter={StaticResource BooleanToVisibilityConverter}}">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="Auto"/>
+                    </Grid.ColumnDefinitions>
+                    
+                    <!-- Progress Bar -->
+                    <ProgressBar Grid.Column="0" 
+                                 Value="{Binding CentralProgress.CurrentProgress}" 
+                                 Maximum="100" Height="6" 
+                                 Background="#E0E0E0" 
+                                 Foreground="#4CAF50"
+                                 ToolTip="{Binding CentralProgress.DetailedProgressInfo}"/>
+                    
+                    <!-- Processing Speed -->
+                    <TextBlock Grid.Column="1" 
+                               Text="{Binding CentralProgress.ProcessingSpeed}" 
+                               FontSize="11" Foreground="#888" 
+                               VerticalAlignment="Center" Margin="12,0,0,0"
+                               Visibility="{Binding CentralProgress.ProcessingSpeed, Converter={StaticResource StringToVisibilityConverter}}"/>
+                </Grid>
+                
+                <!-- Operation Detail (small text below progress bar) -->
+                <TextBlock Grid.Row="1" 
+                           Text="{Binding CentralProgress.CurrentOperationDetail}" 
+                           FontSize="11" Foreground="#666" 
+                           Margin="0,2,0,0"
+                           TextTrimming="CharacterEllipsis"
+                           Visibility="{Binding CentralProgress.IsOperationInProgress, Converter={StaticResource BooleanToVisibilityConverter}}"/>
             </Grid>
         </Border>
     </Grid>

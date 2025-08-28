@@ -3,7 +3,7 @@ using System.Runtime.CompilerServices;
 
 namespace AdbInstallerApp.Models
 {
-    public sealed class InstalledApp : INotifyPropertyChanged
+    public sealed class InstalledApp : INotifyPropertyChanged, IEquatable<InstalledApp>
     {
         private bool _isSelected;
 
@@ -61,6 +61,34 @@ namespace AdbInstallerApp.Models
         private void OnPropertyChanged([CallerMemberName] string? propertyName = null)
         {
             PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
+        }
+
+        // IEquatable<InstalledApp> implementation for deduplication
+        public bool Equals(InstalledApp? other)
+        {
+            if (other is null) return false;
+            if (ReferenceEquals(this, other)) return true;
+            return PackageName.Equals(other.PackageName, StringComparison.OrdinalIgnoreCase);
+        }
+
+        public override bool Equals(object? obj)
+        {
+            return Equals(obj as InstalledApp);
+        }
+
+        public override int GetHashCode()
+        {
+            return PackageName.GetHashCode(StringComparison.OrdinalIgnoreCase);
+        }
+
+        public static bool operator ==(InstalledApp? left, InstalledApp? right)
+        {
+            return EqualityComparer<InstalledApp>.Default.Equals(left, right);
+        }
+
+        public static bool operator !=(InstalledApp? left, InstalledApp? right)
+        {
+            return !(left == right);
         }
     }
 

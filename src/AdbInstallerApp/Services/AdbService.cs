@@ -687,5 +687,69 @@ namespace AdbInstallerApp.Services
             
             return (code == 0, log);
         }
+
+        /// <summary>
+        /// Get device properties for split APK matching
+        /// </summary>
+        public async Task<Dictionary<string, string>> GetDevicePropertiesAsync(string serial)
+        {
+            var props = new Dictionary<string, string>();
+            
+            try
+            {
+                var (code, output, _) = await ProcessRunner.RunAsync(_adbPath, $"-s {serial} shell getprop");
+                
+                if (code == 0)
+                {
+                    var lines = output.Split('\n', StringSplitOptions.RemoveEmptyEntries);
+                    foreach (var line in lines)
+                    {
+                        var match = Regex.Match(line, @"\[(.*?)\]:\s*\[(.*?)\]");
+                        if (match.Success)
+                        {
+                            var key = match.Groups[1].Value;
+                            var value = match.Groups[2].Value;
+                            props[key] = value;
+                        }
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Error getting device properties for {serial}: {ex.Message}");
+            }
+            
+            return props;
+        }
+
+        /// <summary>
+        /// Install single APK with enhanced options
+        /// </summary>
+        public async Task<bool> InstallAsync(string serial, string apkPath, bool reinstall, bool grantPerms, bool allowDowngrade, CancellationToken cancellationToken = default)
+        {
+            var options = new List<string>();
+            if (reinstall) options.Add("-r");
+            if (grantPerms) options.Add("-g");
+            if (allowDowngrade) options.Add("-d");
+            
+            var opts = string.Join(" ", options);
+            var (success, _) = await InstallSingleAsync(serial, apkPath, opts);
+            return success;
+        }
+
+        /// <summary>
+        /// Install multiple APKs with enhanced options
+        /// </summary>
+        public async Task<bool> InstallMultipleAsync(string serial, string[] apkPaths, bool reinstall, bool grantPerms, bool allowDowngrade, CancellationToken cancellationToken = default)
+        {
+            var options = new List<string>();
+            if (reinstall) options.Add("-r");
+            if (grantPerms) options.Add("-g");
+            if (allowDowngrade) options.Add("-d");
+            
+            var opts = string.Join(" ", options);
+            var (success, _) = await InstallMultipleAsync(serial, apkPaths, opts);
+            return success;
+        }
     }
 }
