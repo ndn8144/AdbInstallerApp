@@ -11,5 +11,16 @@ namespace AdbInstallerApp.Models
         public string Version { get; set; } = string.Empty; // APK version if available
         public string TargetSdk { get; set; } = string.Empty; // Target SDK version
         public string MinSdk { get; set; } = string.Empty; // Minimum SDK version
+
+        // Additional properties for enhanced validation
+        public bool IsBaseApk { get; set; } = false;
+        public string PackageName { get; set; } = string.Empty;
+        public long VersionCode { get; set; } = 0;
+        public string Abi { get; set; } = string.Empty;
+        public string Density { get; set; } = string.Empty;
+        public string Locale { get; set; } = string.Empty;
+        public bool IsFeatureSplit { get; set; } = false;
+        public string SplitName { get; set; } = string.Empty;
+        public string Path => FilePath; // Alias for compatibility
     }
 }

@@ -1,16 +1,19 @@
 using AdbInstallerApp.Models;
 using AdbInstallerApp.Helpers;
+using AdbInstallerApp.Services;
 using System.Text.RegularExpressions;
 
 namespace AdbInstallerApp.Services
 {
-    public sealed class AppInventoryService
+    public class AppInventoryService
     {
         private readonly AdbService _adb;
+        private readonly ILogBus? _logBus; // Make nullable for backward compatibility
 
-        public AppInventoryService(AdbService adb)
+        public AppInventoryService(AdbService adb, ILogBus? logBus = null)
         {
-            _adb = adb ?? throw new ArgumentNullException(nameof(adb));
+            _adb = adb;
+            _logBus = logBus;
         }
 
         public async Task<IReadOnlyList<InstalledApp>> ListInstalledAppsAsync(
@@ -76,19 +79,23 @@ namespace AdbInstallerApp.Services
         {
             // Always get all packages first, then filter in code for reliability
             var cmd = $"-s {serial} shell cmd package list packages -f --user {opts.UserId}";
-            var (code, output, _) = await ProcessRunner.RunAsync(_adb.AdbPath, cmd, timeoutMs: 15000);
+            var result = await Proc.RunAsync(_adb.AdbPath, cmd, null, _logBus != null ? new Progress<string>(_logBus.Write) : null, ct);
+            var code = result.ExitCode;
+            var output = result.StdOut;
 
             if (code != 0 || string.IsNullOrWhiteSpace(output))
             {
                 // Fallback to pm command
                 cmd = $"-s {serial} shell pm list packages -f --user {opts.UserId}";
-                (_, output, _) = await ProcessRunner.RunAsync(_adb.AdbPath, cmd, timeoutMs: 15000);
+                result = await Proc.RunAsync(_adb.AdbPath, cmd, null, _logBus != null ? new Progress<string>(_logBus.Write) : null, ct);
+                output = result.StdOut;
                 
                 if (string.IsNullOrWhiteSpace(output))
                 {
                     // Try without --user flag as fallback
                     cmd = $"-s {serial} shell pm list packages -f";
-                    (_, output, _) = await ProcessRunner.RunAsync(_adb.AdbPath, cmd, timeoutMs: 15000);
+                    result = await Proc.RunAsync(_adb.AdbPath, cmd, null, _logBus != null ? new Progress<string>(_logBus.Write) : null, ct);
+                    output = result.StdOut;
                 }
             }
 
@@ -171,7 +178,9 @@ namespace AdbInstallerApp.Services
             CancellationToken ct)
         {
             var cmd = $"-s {serial} shell pm path {packageName}";
-            var (_, output, _) = await ProcessRunner.RunAsync(_adb.AdbPath, cmd, timeoutMs: 8000);
+            var result = await Proc.RunAsync(_adb.AdbPath, cmd, null, _logBus != null ? new Progress<string>(_logBus.Write) : null, ct);
+            var code = result.ExitCode;
+            var output = result.StdOut;
 
             return ParsePmPath(output);
         }
@@ -200,13 +209,16 @@ namespace AdbInstallerApp.Services
         {
             // Use lighter weight command for basic info
             var cmd = $"-s {serial} shell dumpsys package {packageName} | grep -E 'applicationLabel=|versionName=|versionCode=|flags='";
-            var (code, output, _) = await ProcessRunner.RunAsync(_adb.AdbPath, cmd, timeoutMs: 5000);
+            var result = await Proc.RunAsync(_adb.AdbPath, cmd, null, _logBus != null ? new Progress<string>(_logBus.Write) : null, ct);
+            var code = result.ExitCode;
+            var output = result.StdOut;
 
             if (code != 0 || string.IsNullOrWhiteSpace(output))
             {
                 // Fallback to full dumpsys
                 cmd = $"-s {serial} shell dumpsys package {packageName}";
-                (_, output, _) = await ProcessRunner.RunAsync(_adb.AdbPath, cmd, timeoutMs: 8000);
+                result = await Proc.RunAsync(_adb.AdbPath, cmd, null, _logBus != null ? new Progress<string>(_logBus.Write) : null, ct);
+                output = result.StdOut;
             }
 
             return ParseDumpsysPackage(output, packageName);
@@ -270,7 +282,9 @@ namespace AdbInstallerApp.Services
                 if (paths.Count == 1)
                 {
                     var cmd = $"-s {serial} shell stat -c %s \"{paths[0]}\"";
-                    var (_, output, _) = await ProcessRunner.RunAsync(_adb.AdbPath, cmd, timeoutMs: 3000);
+                    var result = await Proc.RunAsync(_adb.AdbPath, cmd, null, _logBus != null ? new Progress<string>(_logBus.Write) : null, ct);
+                    var code = result.ExitCode;
+                    var output = result.StdOut;
                     return long.TryParse(output.Trim(), out var size) ? size : 0;
                 }
 
@@ -280,7 +294,9 @@ namespace AdbInstallerApp.Services
                     try
                     {
                         var cmd = $"-s {serial} shell stat -c %s \"{path}\"";
-                        var (_, output, _) = await ProcessRunner.RunAsync(_adb.AdbPath, cmd, timeoutMs: 2000);
+                        var result = await Proc.RunAsync(_adb.AdbPath, cmd, null, _logBus != null ? new Progress<string>(_logBus.Write) : null, ct);
+                        var code = result.ExitCode;
+                        var output = result.StdOut;
                         return long.TryParse(output.Trim(), out var size) ? size : 0L;
                     }
                     catch

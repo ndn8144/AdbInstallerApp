@@ -1,0 +1,393 @@
+using System;
+using System.Collections.Concurrent;
+using System.Collections.Generic;
+using System.IO;
+using System.Linq;
+using System.Threading;
+using System.Threading.Tasks;
+using AdbInstallerApp.Models;
+
+namespace AdbInstallerApp.Services
+{
+    /// <summary>
+    /// Enhanced InstallOrchestrator with per-device options, advanced APK validation, and atomic installation safety
+    /// </summary>
+    public sealed class EnhancedInstallOrchestrator : IDisposable
+    {
+        private readonly IEnhancedAdbService _adbService;
+        private readonly ILogBus _logBus;
+        private readonly GlobalStatusService _statusService;
+        private readonly ApkGroupValidator _apkValidator;
+        private readonly IPackageLockService _packageLockService;
+        
+        // Global cancellation
+        private readonly CancellationTokenSource _globalCancellation = new();
+
+        public EnhancedInstallOrchestrator(
+            IEnhancedAdbService adbService, 
+            ILogBus logBus,
+            GlobalStatusService statusService,
+            ApkGroupValidator apkValidator,
+            IPackageLockService packageLockService)
+        {
+            _adbService = adbService ?? throw new ArgumentNullException(nameof(adbService));
+            _logBus = logBus ?? throw new ArgumentNullException(nameof(logBus));
+            _statusService = statusService ?? throw new ArgumentNullException(nameof(statusService));
+            _apkValidator = apkValidator ?? throw new ArgumentNullException(nameof(apkValidator));
+            _packageLockService = packageLockService ?? throw new ArgumentNullException(nameof(packageLockService));
+        }
+
+        /// <summary>
+        /// Run enhanced installation with per-device options and advanced validation
+        /// </summary>
+        public async Task RunAsync(
+            IReadOnlyList<DeviceInfo> devices,
+            IReadOnlyList<ApkGroup> apkGroups,
+            AdbInstallOptions globalOptions,
+            CancellationToken cancellationToken = default)
+        {
+            using var combinedCts = CancellationTokenSource.CreateLinkedTokenSource(
+                cancellationToken, _globalCancellation.Token);
+            var token = combinedCts.Token;
+
+            using var statusScope = _statusService.Push($"Installing {apkGroups.Count} groups on {devices.Count} devices");
+            _logBus.Write($"Starting installation: {apkGroups.Count} groups → {devices.Count} devices");
+
+            try
+            {
+                // Validate all groups first
+                var validationOptions = new ApkValidationOptions
+                {
+                    VerifyVersionHomogeneity = true,
+                    VerifySignature = true,
+                    SplitMatchMode = StrictSplitMatch.Relaxed
+                };
+
+                var validatedGroups = new List<(ApkGroup Group, ApkValidationResult Validation)>();
+                
+                foreach (var group in apkGroups)
+                {
+                    var validation = await _apkValidator.ValidateGroupAsync(group, validationOptions, token).ConfigureAwait(false);
+                    if (!validation.IsValid)
+                    {
+                        _logBus.Write($"Group validation failed: {group.Name} - {string.Join(", ", validation.Errors)}");
+                        continue;
+                    }
+                    validatedGroups.Add((group, validation));
+                }
+
+                if (!validatedGroups.Any())
+                {
+                    _logBus.Write("No valid APK groups to install");
+                    return;
+                }
+
+                // Execute installations per device
+                var tasks = devices.Select(device => 
+                    InstallOnDeviceAsync(device, validatedGroups, globalOptions, token)).ToArray();
+                
+                await Task.WhenAll(tasks).ConfigureAwait(false);
+                _logBus.Write("Installation completed successfully");
+            }
+            catch (OperationCanceledException)
+            {
+                _logBus.Write("Installation cancelled by user");
+                throw;
+            }
+            catch (Exception ex)
+            {
+                _logBus.Write($"Installation failed: {ex.Message}");
+                throw;
+            }
+
+            try
+            {
+                // Phase 1: Build and validate APK groups
+                var groups = await _apkValidator.BuildGroupsAsync(selectedPaths, token);
+                if (groups.Count == 0)
+                {
+                    throw new InvalidOperationException("No valid APK groups found");
+                }
+
+                // Phase 2: Build per-device installation plans
+                var plans = await BuildDevicePlansAsync(deviceSerials, groups, globalOptions, perDeviceOptions, token);
+                if (plans.Count == 0)
+                {
+                    throw new InvalidOperationException("No valid installation plans created");
+                }
+
+                // Phase 3: Execute installation plans
+                await ExecutePlansAsync(plans, token);
+            }
+            catch (OperationCanceledException)
+            {
+                // Installation cancelled
+                throw;
+            }
+            catch (Exception)
+            {
+                // Installation failed
+                throw;
+            }
+        }
+
+        /// <summary>
+        /// Cancel all ongoing operations
+        /// </summary>
+        public void CancelAll()
+        {
+            _globalCancellation.Cancel();
+        }
+
+        public async Task<IReadOnlyList<DevicePlan>> BuildDevicePlansAsync(
+            IReadOnlyList<string> deviceSerials,
+            IReadOnlyList<GroupSnapshot> groups,
+            InstallOptionsGlobal globalOptions,
+            IReadOnlyDictionary<string, DeviceInstallOptions>? perDeviceOptions,
+            CancellationToken cancellationToken)
+        {
+            var plans = new List<DevicePlan>();
+            
+            foreach (var serial in deviceSerials)
+            {
+                try
+                {
+                    // Get device properties for compatibility filtering
+                    var deviceProps = await GetDevicePropertiesAsync(serial, cancellationToken);
+                    if (!deviceProps.IsOnline)
+                        continue;
+
+                    // Merge global and per-device options
+                    var deviceOptions = MergeOptions(globalOptions, perDeviceOptions?.GetValueOrDefault(serial));
+
+                    // Build installation units for this device
+                    var units = await BuildInstallationUnitsAsync(groups, deviceProps, deviceOptions, cancellationToken);
+                    
+                    if (units.Count > 0)
+                    {
+                        plans.Add(new DevicePlan(serial, units, deviceOptions));
+                    }
+                }
+                catch (Exception ex)
+                {
+                    System.Diagnostics.Debug.WriteLine($"Failed to build plan for device {serial}: {ex.Message}");
+                }
+            }
+
+            return plans;
+        }
+
+        private Task<List<InstallationUnit>> BuildInstallationUnitsAsync(
+            IReadOnlyList<GroupSnapshot> groups,
+            DeviceProps deviceProps,
+            DeviceInstallOptions options,
+            CancellationToken cancellationToken)
+        {
+            var units = new List<InstallationUnit>();
+            
+            foreach (var group in groups)
+            {
+                try
+                {
+                    // Validate group integrity
+                    var validation = group.Validate(options);
+                    if (!validation.IsValid)
+                    {
+                        System.Diagnostics.Debug.WriteLine($"Group {group.PackageName} failed validation: {validation.ErrorSummary}");
+                        continue;
+                    }
+
+                    // Filter files based on device compatibility
+                    var selectedFiles = FilterFilesForDevice(group.Files, deviceProps, options);
+                    
+                    if (selectedFiles.Count == 0)
+                    {
+                        System.Diagnostics.Debug.WriteLine($"No compatible files for {group.PackageName} on device {deviceProps.Serial}");
+                        continue;
+                    }
+
+                    if (selectedFiles.Count > 0)
+                    {
+                        var totalBytes = selectedFiles.Sum(f => f.SizeBytes);
+                        units.Add(new InstallationUnit(group.PackageName, selectedFiles, totalBytes));
+                    }
+                }
+                catch (Exception ex)
+                {
+                    // Log unit creation failure but continue
+                    System.Diagnostics.Debug.WriteLine($"Failed to create unit for {group.PackageName}: {ex.Message}");
+                }
+            }
+
+            return Task.FromResult(units);
+        }
+
+        private List<ApkFile> FilterFilesForDevice(IReadOnlyList<ApkFile> files, DeviceProps deviceProps, DeviceInstallOptions options)
+        {
+            var baseApk = files.FirstOrDefault(f => f.IsBase);
+            if (baseApk == null) return new List<ApkFile>();
+
+            var result = new List<ApkFile> { baseApk };
+            var splits = files.Where(f => !f.IsBase).ToList();
+
+            foreach (var split in splits)
+            {
+                // Check ABI compatibility
+                if (!string.IsNullOrEmpty(split.Abi) && !deviceProps.SupportsAbi(split.Abi))
+                    continue;
+
+                // Check density compatibility
+                if (!string.IsNullOrEmpty(split.Dpi) && !deviceProps.MatchesDensity(split.Dpi))
+                    continue;
+
+                // Check locale compatibility
+                if (!string.IsNullOrEmpty(split.Locale) && !string.IsNullOrEmpty(deviceProps.Locale) && 
+                    !split.Locale.Equals(deviceProps.Locale, StringComparison.OrdinalIgnoreCase))
+                    continue;
+
+                result.Add(split);
+            }
+
+            return result;
+        }
+
+        private async Task ExecutePlansAsync(IReadOnlyList<DevicePlan> plans, CancellationToken cancellationToken)
+        {
+            using var mainProgress = _progressFactory.CreateHandle("Installing packages", plans.Sum(p => p.TotalBytes));
+
+            var tasks = new List<Task>();
+            foreach (var plan in plans)
+            {
+                var deviceProgress = mainProgress.CreateSlice($"Device {plan.Serial}", 1.0 / plans.Count, plan.TotalBytes);
+                var task = ExecuteDevicePlanAsync(plan, deviceProgress, cancellationToken);
+                tasks.Add(task);
+            }
+
+            await Task.WhenAll(tasks);
+            mainProgress.Complete("Installation completed");
+        }
+
+        private async Task ExecuteDevicePlanAsync(DevicePlan plan, IProgressHandle progress, CancellationToken cancellationToken)
+        {
+            foreach (var unit in plan.Units)
+            {
+                var packageKey = (plan.Serial, unit.PackageName);
+                var packageLock = _packageLocks.GetOrAdd(packageKey, _ => new object());
+
+                // Execute installation outside of lock to avoid deadlock
+                var unitProgress = progress.CreateSlice(unit.PackageName, (double)unit.TotalSize / plan.TotalBytes, unit.TotalSize);
+                var strategy = _strategyFactory.CreateStrategy(unit, plan.Options);
+                var retryPolicy = new RetryPolicy(plan.Options.MaxRetries, plan.Options.EffectiveTimeout);
+                
+                await retryPolicy.ExecuteAsync(async () =>
+                {
+                    await strategy.InstallAsync(plan.Serial, unit, plan.Options, unitProgress, cancellationToken);
+                }, cancellationToken);
+            }
+        }
+
+        private async Task<DeviceProps> GetDevicePropertiesAsync(string serial, CancellationToken cancellationToken)
+        {
+            try
+            {
+                // Check if device is online first
+                var devices = await _adbService.ListDevicesAsync();
+                var device = devices.FirstOrDefault(d => d.Serial == serial);
+                if (device == null || device.State != "device")
+                {
+                    return new DeviceProps(serial, "Unknown", "armeabi-v7a", 160, 21, device?.State ?? "offline");
+                }
+
+                // Get detailed properties
+                var props = await _adbService.GetDevicePropertiesAsync(serial);
+                
+                var model = props.GetValueOrDefault("ro.product.model", "Unknown");
+                var abilist = props.GetValueOrDefault("ro.product.cpu.abilist", "armeabi-v7a");
+                var densityStr = props.GetValueOrDefault("ro.sf.lcd_density", "160");
+                var sdkStr = props.GetValueOrDefault("ro.build.version.sdk", "21");
+                var locale = props.GetValueOrDefault("persist.sys.locale", "");
+
+                int.TryParse(densityStr, out var density);
+                int.TryParse(sdkStr, out var sdk);
+
+                return new DeviceProps(serial, model, abilist, density, sdk, "device", string.IsNullOrEmpty(locale) ? null : locale);
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Failed to get properties for {serial}: {ex.Message}");
+                return new DeviceProps(serial, "Unknown", "armeabi-v7a", 160, 21, "unknown", null);
+            }
+        }
+
+        private static DeviceInstallOptions MergeOptions(InstallOptionsGlobal global, DeviceInstallOptions? deviceSpecific)
+        {
+            if (deviceSpecific != null)
+                return deviceSpecific;
+
+            return new DeviceInstallOptions(
+                Reinstall: global.Reinstall,
+                AllowDowngrade: global.AllowDowngrade,
+                GrantRuntimePermissions: global.GrantRuntimePermissions,
+                UserId: global.UserId,
+                MaxRetries: global.MaxRetries,
+                Timeout: global.Timeout
+            );
+        }
+
+        public void Dispose()
+        {
+            _globalCancellation?.Cancel();
+            _globalCancellation?.Dispose();
+        }
+    }
+
+    /// <summary>
+    /// Simple retry policy for installation operations
+    /// </summary>
+    public sealed class RetryPolicy
+    {
+        private readonly int _maxRetries;
+        private readonly TimeSpan _timeout;
+
+        public RetryPolicy(int maxRetries, TimeSpan timeout)
+        {
+            _maxRetries = maxRetries;
+            _timeout = timeout;
+        }
+
+        public async Task ExecuteAsync(Func<Task> operation, CancellationToken cancellationToken)
+        {
+            var attempts = 0;
+            Exception? lastException = null;
+
+            while (attempts <= _maxRetries)
+            {
+                try
+                {
+                    using var timeoutCts = new CancellationTokenSource(_timeout);
+                    using var combinedCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken, timeoutCts.Token);
+                    
+                    await operation();
+                    return; // Success
+                }
+                catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+                {
+                    throw; // Don't retry on user cancellation
+                }
+                catch (Exception ex)
+                {
+                    lastException = ex;
+                    attempts++;
+                    
+                    if (attempts <= _maxRetries)
+                    {
+                        var delay = TimeSpan.FromSeconds(Math.Pow(2, attempts - 1)); // Exponential backoff
+                        await Task.Delay(delay, cancellationToken);
+                    }
+                }
+            }
+
+            throw lastException ?? new InvalidOperationException("Operation failed after retries");
+        }
+    }
+}

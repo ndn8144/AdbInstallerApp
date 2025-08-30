@@ -56,11 +56,11 @@ namespace AdbInstallerApp.Services
                 _notifyIcon.ContextMenuStrip = contextMenu;
                 _notifyIcon.DoubleClick += (s, e) => ShowMainWindow();
             }
-            catch (Exception ex)
+            catch (Exception)
             {
-                // System tray not available
-                _systemTrayEnabled = false;
+                // Ignore notification errors to prevent cascading failures
             }
+            _systemTrayEnabled = false;
         }
         
         /// <summary>

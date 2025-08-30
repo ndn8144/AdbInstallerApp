@@ -1,0 +1,284 @@
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Threading;
+using AdbInstallerApp.Events;
+using AdbInstallerApp.Models;
+using AdbInstallerApp.Services;
+using AdbInstallerApp.ViewModels;
+
+namespace AdbInstallerApp.Services
+{
+    /// <summary>
+    /// Integration service that bridges the enhanced orchestrator with existing UI components
+    /// </summary>
+    public sealed class EnhancedInstallationService : IDisposable
+    {
+        private readonly EnhancedInstallOrchestrator _orchestrator;
+        private readonly AdbService _adbService;
+        private readonly Dictionary<string, DeviceInstallOptions> _perDeviceOptions = new();
+        private InstallOptionsGlobal _globalOptions = new();
+
+        public EnhancedInstallationService(AdbService adbService, string adbToolsPath)
+        {
+            _adbService = adbService ?? throw new ArgumentNullException(nameof(adbService));
+            _orchestrator = new EnhancedInstallOrchestrator(adbService, adbToolsPath);
+        }
+
+        /// <summary>
+        /// Set global installation options (fallback for devices without specific options)
+        /// </summary>
+        public void SetGlobalOptions(bool reinstall, bool allowDowngrade, bool grantPermissions, 
+            int? userId = null, int maxRetries = 2, TimeSpan timeout = default)
+        {
+            _globalOptions = new InstallOptionsGlobal(
+                Reinstall: reinstall,
+                AllowDowngrade: allowDowngrade,
+                GrantRuntimePermissions: grantPermissions,
+                UserId: userId,
+                MaxRetries: maxRetries,
+                Timeout: timeout == default ? TimeSpan.FromMinutes(5) : timeout
+            );
+        }
+
+        /// <summary>
+        /// Set device-specific options
+        /// </summary>
+        public void SetDeviceOptions(string deviceSerial, DeviceInstallOptions options)
+        {
+            _perDeviceOptions[deviceSerial] = options;
+        }
+
+        /// <summary>
+        /// Get device-specific options (or null if using global)
+        /// </summary>
+        public DeviceInstallOptions? GetDeviceOptions(string deviceSerial)
+        {
+            return _perDeviceOptions.GetValueOrDefault(deviceSerial);
+        }
+
+        /// <summary>
+        /// Clear device-specific options (will use global options)
+        /// </summary>
+        public void ClearDeviceOptions(string deviceSerial)
+        {
+            _perDeviceOptions.Remove(deviceSerial);
+        }
+
+        /// <summary>
+        /// Install APKs using enhanced orchestrator with current options
+        /// </summary>
+        public async Task InstallAsync(
+            IEnumerable<DeviceInfo> devices,
+            IEnumerable<string> selectedPaths,
+            CancellationToken cancellationToken = default)
+        {
+            var deviceSerials = devices.Where(d => d.State == "device")
+                                     .Select(d => d.Serial)
+                                     .ToList();
+
+            if (deviceSerials.Count == 0)
+                throw new InvalidOperationException("No online devices available for installation");
+
+            if (!selectedPaths.Any())
+                throw new InvalidOperationException("No APK files selected for installation");
+
+            await _orchestrator.RunAsync(
+                deviceSerials,
+                selectedPaths.ToList(),
+                _globalOptions,
+                _perDeviceOptions.Count > 0 ? _perDeviceOptions : null,
+                cancellationToken
+            );
+        }
+
+        /// <summary>
+        /// Install APK groups using enhanced orchestrator
+        /// </summary>
+        public async Task InstallGroupsAsync(
+            IEnumerable<DeviceInfo> devices,
+            IEnumerable<ApkGroup> groups,
+            CancellationToken cancellationToken = default)
+        {
+            var deviceSerials = devices.Where(d => d.State == "device")
+                                     .Select(d => d.Serial)
+                                     .ToList();
+
+            if (deviceSerials.Count == 0)
+                throw new InvalidOperationException("No online devices available for installation");
+
+            if (!groups.Any())
+                throw new InvalidOperationException("No APK groups selected for installation");
+
+            // Flatten groups to file paths
+            var selectedPaths = groups.SelectMany(g => g.ApkItems.Select(item => item.FilePath))
+                                    .Distinct()
+                                    .ToList();
+
+            await _orchestrator.RunAsync(
+                deviceSerials,
+                selectedPaths,
+                _globalOptions,
+                _perDeviceOptions.Count > 0 ? _perDeviceOptions : null,
+                cancellationToken
+            );
+        }
+
+        /// <summary>
+        /// Cancel all ongoing installations
+        /// </summary>
+        public void CancelAll()
+        {
+            _orchestrator.CancelAll();
+        }
+
+        /// <summary>
+        /// Get summary of current configuration
+        /// </summary>
+        public string GetConfigurationSummary()
+        {
+            var summary = new List<string>
+            {
+                $"Global: Reinstall={_globalOptions.Reinstall}, Downgrade={_globalOptions.AllowDowngrade}, " +
+                $"Grant={_globalOptions.GrantRuntimePermissions}, Retries={_globalOptions.MaxRetries}"
+            };
+
+            if (_perDeviceOptions.Count > 0)
+            {
+                summary.Add($"Per-device options configured for {_perDeviceOptions.Count} device(s):");
+                foreach (var kvp in _perDeviceOptions)
+                {
+                    var opts = kvp.Value;
+                    summary.Add($"  {kvp.Key}: Strategy={opts.InstallStrategy}, " +
+                              $"SplitMatch={opts.StrictSplitMatch}, Verify={opts.VerifySignature}");
+                }
+            }
+
+            return string.Join(Environment.NewLine, summary);
+        }
+
+        /// <summary>
+        /// Create device options view model for configuration dialog
+        /// </summary>
+        public DeviceOptionsViewModel CreateDeviceOptionsViewModel(DeviceInfo device)
+        {
+            var currentOptions = GetDeviceOptions(device.Serial);
+            return new DeviceOptionsViewModel(device.Serial, device.Model ?? "Unknown", currentOptions);
+        }
+
+        /// <summary>
+        /// Apply device options from view model
+        /// </summary>
+        public void ApplyDeviceOptions(DeviceOptionsViewModel viewModel)
+        {
+            if (viewModel.DialogResult == true)
+            {
+                SetDeviceOptions(viewModel.DeviceSerial, viewModel.Options);
+            }
+        }
+
+        /// <summary>
+        /// Reset all device-specific options to use global defaults
+        /// </summary>
+        public void ResetAllDeviceOptions()
+        {
+            _perDeviceOptions.Clear();
+        }
+
+        /// <summary>
+        /// Get effective options for a device (per-device or global fallback)
+        /// </summary>
+        public DeviceInstallOptions GetEffectiveOptions(string deviceSerial)
+        {
+            if (_perDeviceOptions.TryGetValue(deviceSerial, out var deviceOptions))
+                return deviceOptions;
+
+            // Return global options converted to device options
+            return new DeviceInstallOptions(
+                Reinstall: _globalOptions.Reinstall,
+                AllowDowngrade: _globalOptions.AllowDowngrade,
+                GrantRuntimePermissions: _globalOptions.GrantRuntimePermissions,
+                UserId: _globalOptions.UserId,
+                MaxRetries: _globalOptions.MaxRetries,
+                Timeout: _globalOptions.Timeout
+            );
+        }
+
+        /// <summary>
+        /// Validate current configuration and return any issues
+        /// </summary>
+        public List<string> ValidateConfiguration()
+        {
+            var issues = new List<string>();
+
+            // Check global options
+            if (_globalOptions.MaxRetries < 0)
+                issues.Add("Global max retries cannot be negative");
+
+            if (_globalOptions.Timeout.TotalSeconds < 1)
+                issues.Add("Global timeout must be at least 1 second");
+
+            // Check per-device options
+            foreach (var kvp in _perDeviceOptions)
+            {
+                var opts = kvp.Value;
+                if (opts.MaxRetries < 0)
+                    issues.Add($"Device {kvp.Key}: Max retries cannot be negative");
+
+                if (opts.EffectiveTimeout.TotalSeconds < 1)
+                    issues.Add($"Device {kvp.Key}: Timeout must be at least 1 second");
+
+                if (opts.ThrottleMBps.HasValue && opts.ThrottleMBps <= 0)
+                    issues.Add($"Device {kvp.Key}: Throttle must be positive if specified");
+            }
+
+            return issues;
+        }
+
+        public void Dispose()
+        {
+            _orchestrator?.Dispose();
+        }
+    }
+
+    /// <summary>
+    /// Extension methods for easier integration with existing ViewModels
+    /// </summary>
+    public static class EnhancedInstallationServiceExtensions
+    {
+        /// <summary>
+        /// Convert legacy install options to global options
+        /// </summary>
+        public static void SetGlobalOptionsFromLegacy(this EnhancedInstallationService service,
+            bool reinstall, bool grant, bool downgrade)
+        {
+            service.SetGlobalOptions(
+                reinstall: reinstall,
+                allowDowngrade: downgrade,
+                grantPermissions: grant,
+                userId: null,
+                maxRetries: 2,
+                timeout: TimeSpan.FromMinutes(5)
+            );
+        }
+
+        /// <summary>
+        /// Install with legacy compatibility
+        /// </summary>
+        public static async Task InstallLegacyAsync(this EnhancedInstallationService service,
+            IEnumerable<DeviceInfo> devices,
+            IEnumerable<ApkItem> apks,
+            bool reinstall, bool grant, bool downgrade,
+            CancellationToken cancellationToken = default)
+        {
+            // Set global options from legacy parameters
+            service.SetGlobalOptionsFromLegacy(reinstall, grant, downgrade);
+
+            // Convert ApkItems to file paths
+            var selectedPaths = apks.Select(apk => apk.FilePath).ToList();
+
+            // Use enhanced installation
+            await service.InstallAsync(devices, selectedPaths, cancellationToken);
+        }
+    }
+}

@@ -131,7 +131,7 @@ namespace AdbInstallerApp.Services
         {
             if (_activeOperations.TryGetValue(operationId, out var operation))
             {
-                operation.CancellationToken.Cancel();
+                operation.CancellationToken?.Cancel();
                 _progressService.CancelOperation(operationId);
             }
         }
@@ -145,7 +145,7 @@ namespace AdbInstallerApp.Services
             
             foreach (var operation in _activeOperations.Values)
             {
-                operation.CancellationToken.Cancel();
+                operation.CancellationToken?.Cancel();
                 _progressService.CancelOperation(operation.Id);
             }
             
@@ -261,7 +261,7 @@ namespace AdbInstallerApp.Services
                 operation.Options.GrantPermissions,
                 operation.Options.AllowDowngrade,
                 msg => { /* Log message */ },
-                operation.CancellationToken.Token);
+                operation.CancellationToken?.Token ?? CancellationToken.None);
         }
         
         private async Task ExecuteGroupInstallation(QueuedInstallOperation operation)
@@ -273,7 +273,7 @@ namespace AdbInstallerApp.Services
                 operation.Options.GrantPermissions,
                 operation.Options.AllowDowngrade,
                 msg => { /* Log message */ },
-                operation.CancellationToken.Token);
+                operation.CancellationToken?.Token ?? CancellationToken.None);
         }
         
         #endregion

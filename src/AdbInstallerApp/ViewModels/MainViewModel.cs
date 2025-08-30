@@ -22,7 +22,7 @@ namespace AdbInstallerApp.ViewModels
         private readonly ApkRepoIndexer _repo = null!;
         public readonly InstallOrchestrator _installer = null!;
         private readonly ApkValidationService _apkValidator = null!;
-        private readonly MultiGroupInstallOrchestrator _multiGroupInstaller = null!;
+        private readonly AdvancedInstallOrchestrator? _multiGroupInstaller = null;
         private System.Threading.Timer? _refreshTimer;
 
         // Multi-Group Install ViewModel
@@ -144,7 +144,9 @@ namespace AdbInstallerApp.ViewModels
                 _repo = new ApkRepoIndexer();
                 _apkValidator = new ApkValidationService();
                 _installer = new InstallOrchestrator(_adb);
-                _multiGroupInstaller = new MultiGroupInstallOrchestrator(_adb, _installer);
+                // TODO: Fix EnhancedInstallOrchestrator - temporarily commented out
+                // _multiGroupInstaller = new EnhancedInstallOrchestrator(_adb, Path.Combine(AppContext.BaseDirectory, "..", "..", "..", "tools", "platform-tools"));
+                _multiGroupInstaller = null; // Temporary fix
 
                 InstallQueue = new EnhancedInstallQueue(_installer, maxConcurrentOperations: 2);
                 KeyboardShortcuts = new KeyboardShortcutService(InstallQueue, OptimizedProgress);
@@ -248,11 +250,23 @@ namespace AdbInstallerApp.ViewModels
         {
             System.Windows.Application.Current.Dispatcher.Invoke(() =>
             {
-                Devices.Clear();
+                System.Diagnostics.Debug.WriteLine($"MainViewModel: OnDevicesChanged called with {devices.Count} devices");
                 foreach (var device in devices)
                 {
-                    Devices.Add(new DeviceViewModel(device));
+                    System.Diagnostics.Debug.WriteLine($"  Incoming Device: {device.Serial} - {device.State}");
                 }
+                
+                Devices.Clear();
+                System.Diagnostics.Debug.WriteLine($"MainViewModel: Devices collection cleared");
+                
+                foreach (var device in devices)
+                {
+                    var deviceVM = new DeviceViewModel(device);
+                    Devices.Add(deviceVM);
+                    System.Diagnostics.Debug.WriteLine($"  Added to UI: {deviceVM.Serial} - {deviceVM.State} - {deviceVM.DisplayName}");
+                }
+                
+                System.Diagnostics.Debug.WriteLine($"MainViewModel: Final UI collection count: {Devices.Count}");
                 AppendLog($"📱 Devices updated: {Devices.Count} device(s) connected");
             });
         }

@@ -93,10 +93,10 @@ namespace AdbInstallerApp.ViewModels
             RefreshAppsCommand = new AsyncRelayCommand(RefreshAppsAsync, () => !IsLoading);
             ExportSelectedAppsCommand = new AsyncRelayCommand(ExportSelectedAppsAsync, () => !IsExporting && SelectedAppsCount > 0);
             ExportAllFilteredAppsCommand = new AsyncRelayCommand(ExportAllFilteredAppsAsync, () => !IsExporting && FilteredApps.Count > 0);
-            SelectAllCommand = new RelayCommand(SelectAllApps, () => FilteredApps.Count > 0);
-            DeselectAllCommand = new RelayCommand(DeselectAllApps, () => SelectedAppsCount > 0);
-            CancelLoadCommand = new RelayCommand(CancelLoad, () => IsLoading);
-            CancelExportCommand = new RelayCommand(CancelExport, () => IsExporting);
+            SelectAllCommand = new CommunityToolkit.Mvvm.Input.RelayCommand(SelectAllApps, () => FilteredApps.Count > 0);
+            DeselectAllCommand = new CommunityToolkit.Mvvm.Input.RelayCommand(DeselectAllApps, () => SelectedAppsCount > 0);
+            CancelLoadCommand = new CommunityToolkit.Mvvm.Input.RelayCommand(CancelLoad, () => IsLoading);
+            CancelExportCommand = new CommunityToolkit.Mvvm.Input.RelayCommand(CancelExport, () => IsExporting);
 
             // Subscribe to property changes for filtering
             PropertyChanged += OnPropertyChanged;

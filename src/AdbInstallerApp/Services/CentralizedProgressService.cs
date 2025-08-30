@@ -18,9 +18,7 @@ namespace AdbInstallerApp.Services
         public static CentralizedProgressService Instance => _instance.Value;
         
         // UI Throttling - max 10 updates/second
-        private readonly Timer _uiUpdateTimer;
-        private readonly object _updateLock = new object();
-        private volatile bool _hasPendingUpdate = false;
+        private readonly object _lock = new();
         private const int UI_UPDATE_INTERVAL_MS = 100; // 10 updates/second
         
         // Concurrent Operations Support

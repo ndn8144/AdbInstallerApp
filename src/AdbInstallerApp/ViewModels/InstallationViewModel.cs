@@ -102,8 +102,8 @@ namespace AdbInstallerApp.ViewModels
             // Initialize commands
             BuildPlansCommand = new AsyncRelayCommand(BuildPlansAsync, () => CanBuildPlans);
             StartInstallationCommand = new AsyncRelayCommand(StartInstallationAsync, () => CanStartInstallation);
-            CancelInstallationCommand = new RelayCommand(CancelInstallation, () => CanCancelInstallation);
-            ClearLogCommand = new RelayCommand(ClearLog);
+            CancelInstallationCommand = new CommunityToolkit.Mvvm.Input.RelayCommand(CancelInstallation, () => CanCancelInstallation);
+            ClearLogCommand = new CommunityToolkit.Mvvm.Input.RelayCommand(ClearLog);
             
             // Subscribe to property changes to update command states
             PropertyChanged += OnPropertyChanged;

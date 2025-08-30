@@ -1,26 +1,26 @@
-﻿<Project Sdk="Microsoft.NET.Sdk">
-<PropertyGroup>
-<TargetFramework>net8.0-windows</TargetFramework>
-<OutputType>WinExe</OutputType>
-<UseWPF>true</UseWPF>
-<ApplicationIcon>Assets\Icons\app.ico</ApplicationIcon>
-<Nullable>enable</Nullable>
-<ImplicitUsings>enable</ImplicitUsings>
-<AssemblyTitle>ADB Installer App</AssemblyTitle>
-<AssemblyDescription>Professional APK Management and Installation</AssemblyDescription>
-<AssemblyCompany>Your Company</AssemblyCompany>
-<AssemblyProduct>ADB Installer App</AssemblyProduct>
-<AssemblyCopyright>Copyright © 2025</AssemblyCopyright>
-<AssemblyVersion>1.0.0</AssemblyVersion>
-<FileVersion>1.0.0</FileVersion>
-</PropertyGroup>
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net8.0-windows</TargetFramework>
+    <OutputType>WinExe</OutputType>
+    <UseWPF>true</UseWPF>
+    <ApplicationIcon>Assets\Icons\app.ico</ApplicationIcon>
+    <ImplicitUsings>enable</ImplicitUsings>
+    
+    <!-- Assembly metadata -->
+    <AssemblyTitle>ADB Installer App</AssemblyTitle>
+    <AssemblyDescription>Professional APK Management and Installation</AssemblyDescription>
+    <AssemblyCompany>Your Company</AssemblyCompany>
+    <AssemblyProduct>ADB Installer App</AssemblyProduct>
+    <AssemblyCopyright>Copyright © 2025</AssemblyCopyright>
+    <AssemblyVersion>1.0.0</AssemblyVersion>
+    <FileVersion>1.0.0</FileVersion>
+  </PropertyGroup>
 
-
-<ItemGroup>
-<Content Include="appsettings.json"> <!-- cspell:disable-line -->
-<CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-</Content>
-</ItemGroup>
+  <ItemGroup>
+    <Content Include="appsettings.json">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+  </ItemGroup>
 
   <ItemGroup>
     <!-- Copy font files to output directory -->
@@ -30,11 +30,19 @@
     </None>
   </ItemGroup>
 
-
-
-<ItemGroup>
-  <PackageReference Include="CommunityToolkit.Mvvm" Version="8.4.0" /> <!-- cspell:disable-line -->
-  <PackageReference Include="Newtonsoft.Json" Version="13.0.3" /><!-- cspell:disable-line -->
-  <PackageReference Include="Ookii.Dialogs.Wpf" Version="5.0.1" /><!-- cspell:disable-line -->
-</ItemGroup>
+  <ItemGroup>
+    <!-- Existing packages -->
+    <PackageReference Include="Newtonsoft.Json" Version="13.0.3" />
+    <PackageReference Include="Ookii.Dialogs.Wpf" Version="5.0.1" />
+    
+    <!-- New packages for advanced functionality -->
+    <PackageReference Include="System.Threading.Channels" Version="8.0.0" />
+    <PackageReference Include="System.Reactive" Version="6.0.1" />
+    <PackageReference Include="System.IO.Hashing" Version="8.0.0" />
+    <PackageReference Include="Microsoft.Extensions.Hosting" Version="8.0.0" />
+    <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="8.0.0" />
+    
+    <!-- MVVM Framework -->
+    <PackageReference Include="CommunityToolkit.Mvvm" Version="8.4.0" />
+  </ItemGroup>
 </Project>

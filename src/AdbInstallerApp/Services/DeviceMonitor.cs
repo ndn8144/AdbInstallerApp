@@ -18,7 +18,6 @@ namespace AdbInstallerApp.Services
             _adb = adb;
         }
 
-
         public void Start()
         {
             _cts?.Cancel();
@@ -31,19 +30,32 @@ namespace AdbInstallerApp.Services
                     try
                     {
                         var list = await _adb.ListDevicesAsync();
+                        System.Diagnostics.Debug.WriteLine($"DeviceMonitor: Got {list.Count} devices from ADB");
+                        foreach (var device in list)
+                        {
+                            System.Diagnostics.Debug.WriteLine($"  Monitor Device: {device.Serial} - {device.State}");
+                        }
+                        
                         var dict = list.ToDictionary(d => d.Serial, d => d.State);
                         if (!AreSame(dict, last))
                         {
+                            System.Diagnostics.Debug.WriteLine($"DeviceMonitor: Device list CHANGED - Notifying UI");
                             last = dict;
                             DevicesChanged?.Invoke(list);
                         }
+                        else
+                        {
+                            System.Diagnostics.Debug.WriteLine($"DeviceMonitor: No changes detected");
+                        }
                     }
-                    catch { }
+                    catch (Exception ex)
+                    {
+                        System.Diagnostics.Debug.WriteLine($"DeviceMonitor ERROR: {ex.Message}");
+                    }
                     await Task.Delay(_interval, _cts.Token);
                 }
             });
         }
-
 
         private static bool AreSame(Dictionary<string, string> a, Dictionary<string, string> b)
         {

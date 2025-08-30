@@ -10,75 +10,126 @@ namespace AdbInstallerApp.Services
     public class AdbService
     {
         private readonly string _adbPath;
+        private readonly ILogBus? _logBus; // Make nullable for backward compatibility
 
-
-        public AdbService()
+        public AdbService(ILogBus? logBus = null)
         {
+            _logBus = logBus;
             // Prefer bundled adb under solution root / tools/platform-tools
             var baseDir = AppContext.BaseDirectory;
             var toolsCandidate = Path.GetFullPath(Path.Combine(baseDir, "..", "..", "..", "tools", "platform-tools", "adb.exe"));
-            if (File.Exists(toolsCandidate)) _adbPath = toolsCandidate;
-            else _adbPath = "adb"; // fallback to PATH
+            
+            System.Diagnostics.Debug.WriteLine($"AdbService: BaseDirectory = {baseDir}");
+            System.Diagnostics.Debug.WriteLine($"AdbService: Checking bundled ADB at: {toolsCandidate}");
+            System.Diagnostics.Debug.WriteLine($"AdbService: Bundled ADB exists: {File.Exists(toolsCandidate)}");
+            
+            if (File.Exists(toolsCandidate)) 
+            {
+                _adbPath = toolsCandidate;
+                System.Diagnostics.Debug.WriteLine($"AdbService: Using bundled ADB: {_adbPath}");
+            }
+            else 
+            {
+                _adbPath = "adb"; // fallback to PATH
+                System.Diagnostics.Debug.WriteLine($"AdbService: Using system PATH ADB: {_adbPath}");
+            }
         }
 
         public string AdbPath => _adbPath;
 
         public async Task StartServerAsync()
         {
-            await ProcessRunner.RunAsync(_adbPath, "start-server");
+            await Proc.RunAsync(_adbPath, "start-server", null, _logBus != null ? new Progress<string>(_logBus.Write) : null);
         }
 
 
         public async Task<List<DeviceInfo>> ListDevicesAsync()
         {
             var list = new List<DeviceInfo>();
-            var (code, stdout, _) = await ProcessRunner.RunAsync(_adbPath, "devices");
+            var result = await Proc.RunAsync(_adbPath, "devices", null, _logBus != null ? new Progress<string>(_logBus.Write) : null);
+            var code = result.ExitCode;
+            var stdout = result.StdOut;
             
             if (code != 0) 
             {
+                System.Diagnostics.Debug.WriteLine($"ADB ERROR: {result.StdErr}");
                 return list;
             }
 
+            System.Diagnostics.Debug.WriteLine($"RAW ADB OUTPUT:\n'{stdout}'");
+            System.Diagnostics.Debug.WriteLine($"RAW OUTPUT LENGTH: {stdout.Length}");
             var lines = stdout.Split(new[] { "\r\n", "\n" }, StringSplitOptions.RemoveEmptyEntries);
+            System.Diagnostics.Debug.WriteLine($"TOTAL LINES AFTER SPLIT: {lines.Length}");
+            
+            for (int i = 0; i < lines.Length; i++)
+            {
+                System.Diagnostics.Debug.WriteLine($"LINE {i}: '{lines[i]}'");
+            }
             
             foreach (var line in lines.Skip(1)) // skip header
             {
-                // Format: SERIAL\tSTATE (or SERIAL STATE)
-                // Try multiple parsing approaches
-                string serial;
-                string state;
+                // Skip empty lines and lines with only whitespace
+                if (string.IsNullOrWhiteSpace(line)) 
+                {
+                    System.Diagnostics.Debug.WriteLine($"SKIPPING EMPTY/WHITESPACE LINE: '{line}'");
+                    continue;
+                }
                 
-                if (line.Contains("\t"))
+                // Skip lines that are just whitespace or newlines
+                var trimmedLine = line.Trim();
+                if (string.IsNullOrEmpty(trimmedLine))
                 {
-                    // Tab-separated format
-                    var tabParts = line.Split('\t');
-                    serial = tabParts[0].Trim();
-                    state = tabParts[1].Trim();
+                    System.Diagnostics.Debug.WriteLine($"SKIPPING TRIMMED EMPTY LINE: '{line}'");
+                    continue;
                 }
-                else
+                
+                System.Diagnostics.Debug.WriteLine($"PROCESSING LINE: '{trimmedLine}' (Original: '{line}')");
+                
+                // Parse using regex to handle multiple whitespace
+                var parts = Regex.Split(trimmedLine, @"\s+");
+                System.Diagnostics.Debug.WriteLine($"REGEX SPLIT PARTS: {parts.Length}");
+                for (int i = 0; i < parts.Length; i++)
                 {
-                    // Space-separated format
-                    var parts = Regex.Split(line.Trim(), @"\s+");
-                    
-                    if (parts.Length >= 2)
-                    {
-                        serial = parts[0].Trim();
-                        state = parts[1].Trim();
-                    }
-                    else
-                    {
-                        continue;
-                    }
+                    System.Diagnostics.Debug.WriteLine($"  Part[{i}]: '{parts[i]}'");
                 }
+                
+                if (parts.Length < 2)
+                {
+                    System.Diagnostics.Debug.WriteLine($"SKIPPING - NOT ENOUGH PARTS: {parts.Length}");
+                    continue;
+                }
+                
+                string serial = parts[0].Trim();
+                string state = parts[1].Trim();
+                
+                if (string.IsNullOrWhiteSpace(serial))
+                {
+                    System.Diagnostics.Debug.WriteLine($"SKIPPING - EMPTY SERIAL");
+                    continue;
+                }
+                
+                System.Diagnostics.Debug.WriteLine($"PARSED DEVICE: Serial='{serial}', State='{state}'");
                 
                 var device = new DeviceInfo { Serial = serial, State = state };
+                list.Add(device);
+                System.Diagnostics.Debug.WriteLine($"ADDED TO LIST: {serial} - {state} (Total: {list.Count})");
+                
+                // Only enrich authorized devices to avoid blocking
                 if (device.State == "device")
                 {
-                    await EnrichDeviceInfoAsync(device);
+                    try
+                    {
+                        await EnrichDeviceInfoAsync(device);
+                        System.Diagnostics.Debug.WriteLine($"ENRICHED: {serial}");
+                    }
+                    catch (Exception ex)
+                    {
+                        System.Diagnostics.Debug.WriteLine($"ENRICHMENT FAILED: {serial} - {ex.Message}");
+                    }
                 }
-                list.Add(device);
             }
             
+            System.Diagnostics.Debug.WriteLine($"FINAL DEVICE COUNT: {list.Count}");
             return list;
         }
 
@@ -121,7 +172,9 @@ namespace AdbInstallerApp.Services
 
         private async Task GetDevicePropertiesAsync(DeviceInfo device)
         {
-            var (code, stdout, _) = await ProcessRunner.RunAsync(_adbPath, $"-s {device.Serial} shell getprop");
+            var result = await Proc.RunAsync(_adbPath, $"-s {device.Serial} shell getprop", null, _logBus != null ? new Progress<string>(_logBus.Write) : null);
+            var code = result.ExitCode;
+            var stdout = result.StdOut;
             if (code == 0)
             {
                 var lines = stdout.Split(new[] { "\r\n", "\n" }, StringSplitOptions.RemoveEmptyEntries);
@@ -222,35 +275,45 @@ namespace AdbInstallerApp.Services
         private async Task GetHardwareInfoAsync(DeviceInfo device)
         {
             // CPU Information
-            var (cpuCode, cpuOutput, _) = await ProcessRunner.RunAsync(_adbPath, $"-s {device.Serial} shell cat /proc/cpuinfo");
+            var result = await Proc.RunAsync(_adbPath, $"-s {device.Serial} shell cat /proc/cpuinfo", null, _logBus != null ? new Progress<string>(_logBus.Write) : null);
+            var cpuCode = result.ExitCode;
+            var cpuOutput = result.StdOut;
             if (cpuCode == 0)
             {
                 device.CpuInfo = cpuOutput;
             }
 
             // Memory Information
-            var (memCode, memOutput, _) = await ProcessRunner.RunAsync(_adbPath, $"-s {device.Serial} shell cat /proc/meminfo");
+            result = await Proc.RunAsync(_adbPath, $"-s {device.Serial} shell cat /proc/meminfo", null, _logBus != null ? new Progress<string>(_logBus.Write) : null);
+            var memCode = result.ExitCode;
+            var memOutput = result.StdOut;
             if (memCode == 0)
             {
                 device.MemoryInfo = memOutput;
             }
 
             // Storage Information
-            var (storageCode, storageOutput, _) = await ProcessRunner.RunAsync(_adbPath, $"-s {device.Serial} shell df");
+            result = await Proc.RunAsync(_adbPath, $"-s {device.Serial} shell df", null, _logBus != null ? new Progress<string>(_logBus.Write) : null);
+            var storageCode = result.ExitCode;
+            var storageOutput = result.StdOut;
             if (storageCode == 0)
             {
                 device.StorageInfo = storageOutput;
             }
 
             // Partition Information
-            var (partCode, partOutput, _) = await ProcessRunner.RunAsync(_adbPath, $"-s {device.Serial} shell cat /proc/partitions");
+            result = await Proc.RunAsync(_adbPath, $"-s {device.Serial} shell cat /proc/partitions", null, _logBus != null ? new Progress<string>(_logBus.Write) : null);
+            var partCode = result.ExitCode;
+            var partOutput = result.StdOut;
             if (partCode == 0)
             {
                 device.PartitionInfo = partOutput;
             }
 
             // Battery Information
-            var (batteryCode, batteryOutput, _) = await ProcessRunner.RunAsync(_adbPath, $"-s {device.Serial} shell dumpsys battery");
+            result = await Proc.RunAsync(_adbPath, $"-s {device.Serial} shell dumpsys battery", null, _logBus != null ? new Progress<string>(_logBus.Write) : null);
+            var batteryCode = result.ExitCode;
+            var batteryOutput = result.StdOut;
             if (batteryCode == 0)
             {
                 device.BatteryStatus = batteryOutput;
@@ -275,7 +338,9 @@ namespace AdbInstallerApp.Services
             }
 
             // Battery capacity
-            var (capacityCode, capacityOutput, _) = await ProcessRunner.RunAsync(_adbPath, $"-s {device.Serial} shell cat /sys/class/power_supply/battery/capacity");
+            result = await Proc.RunAsync(_adbPath, $"-s {device.Serial} shell cat /sys/class/power_supply/battery/capacity", null, _logBus != null ? new Progress<string>(_logBus.Write) : null);
+            var capacityCode = result.ExitCode;
+            var capacityOutput = result.StdOut;
             if (capacityCode == 0 && string.IsNullOrEmpty(device.BatteryLevel))
             {
                 device.BatteryLevel = capacityOutput.Trim();
@@ -285,14 +350,18 @@ namespace AdbInstallerApp.Services
         private async Task GetNetworkInfoAsync(DeviceInfo device)
         {
             // Network Interfaces
-            var (netCode, netOutput, _) = await ProcessRunner.RunAsync(_adbPath, $"-s {device.Serial} shell ip addr show");
+            var result = await Proc.RunAsync(_adbPath, $"-s {device.Serial} shell ip addr show", null, _logBus != null ? new Progress<string>(_logBus.Write) : null);
+            var netCode = result.ExitCode;
+            var netOutput = result.StdOut;
             if (netCode == 0)
             {
                 device.NetworkInterfaces = netOutput;
             }
 
             // WiFi Information
-            var (wifiCode, wifiOutput, _) = await ProcessRunner.RunAsync(_adbPath, $"-s {device.Serial} shell dumpsys wifi");
+            result = await Proc.RunAsync(_adbPath, $"-s {device.Serial} shell dumpsys wifi", null, _logBus != null ? new Progress<string>(_logBus.Write) : null);
+            var wifiCode = result.ExitCode;
+            var wifiOutput = result.StdOut;
             if (wifiCode == 0)
             {
                 device.WifiInfo = wifiOutput;
@@ -307,7 +376,9 @@ namespace AdbInstallerApp.Services
             }
 
             // Connectivity Information
-            var (connCode, connOutput, _) = await ProcessRunner.RunAsync(_adbPath, $"-s {device.Serial} shell dumpsys connectivity");
+            result = await Proc.RunAsync(_adbPath, $"-s {device.Serial} shell dumpsys connectivity", null, _logBus != null ? new Progress<string>(_logBus.Write) : null);
+            var connCode = result.ExitCode;
+            var connOutput = result.StdOut;
             if (connCode == 0)
             {
                 device.ConnectivityInfo = connOutput;
@@ -315,7 +386,9 @@ namespace AdbInstallerApp.Services
             }
 
             // Network Statistics
-            var (statsCode, statsOutput, _) = await ProcessRunner.RunAsync(_adbPath, $"-s {device.Serial} shell cat /proc/net/dev");
+            result = await Proc.RunAsync(_adbPath, $"-s {device.Serial} shell cat /proc/net/dev", null, _logBus != null ? new Progress<string>(_logBus.Write) : null);
+            var statsCode = result.ExitCode;
+            var statsOutput = result.StdOut;
             if (statsCode == 0)
             {
                 device.NetworkStats = statsOutput;
@@ -325,28 +398,36 @@ namespace AdbInstallerApp.Services
         private async Task GetDisplayInfoAsync(DeviceInfo device)
         {
             // Screen Resolution
-            var (sizeCode, sizeOutput, _) = await ProcessRunner.RunAsync(_adbPath, $"-s {device.Serial} shell wm size");
+            var result = await Proc.RunAsync(_adbPath, $"-s {device.Serial} shell wm size", null, _logBus != null ? new Progress<string>(_logBus.Write) : null);
+            var sizeCode = result.ExitCode;
+            var sizeOutput = result.StdOut;
             if (sizeCode == 0)
             {
                 device.ScreenResolution = sizeOutput.Trim();
             }
 
             // Screen Density
-            var (densityCode, densityOutput, _) = await ProcessRunner.RunAsync(_adbPath, $"-s {device.Serial} shell wm density");
+            result = await Proc.RunAsync(_adbPath, $"-s {device.Serial} shell wm density", null, _logBus != null ? new Progress<string>(_logBus.Write) : null);
+            var densityCode = result.ExitCode;
+            var densityOutput = result.StdOut;
             if (densityCode == 0)
             {
                 device.ScreenDensity = densityOutput.Trim();
             }
 
             // Display Information
-            var (displayCode, displayOutput, _) = await ProcessRunner.RunAsync(_adbPath, $"-s {device.Serial} shell dumpsys display");
+            result = await Proc.RunAsync(_adbPath, $"-s {device.Serial} shell dumpsys display", null, _logBus != null ? new Progress<string>(_logBus.Write) : null);
+            var displayCode = result.ExitCode;
+            var displayOutput = result.StdOut;
             if (displayCode == 0)
             {
                 device.DisplayInfo = displayOutput;
             }
 
             // Graphics Information
-            var (graphicsCode, graphicsOutput, _) = await ProcessRunner.RunAsync(_adbPath, $"-s {device.Serial} shell dumpsys SurfaceFlinger");
+            result = await Proc.RunAsync(_adbPath, $"-s {device.Serial} shell dumpsys SurfaceFlinger", null, _logBus != null ? new Progress<string>(_logBus.Write) : null);
+            var graphicsCode = result.ExitCode;
+            var graphicsOutput = result.StdOut;
             if (graphicsCode == 0)
             {
                 device.GraphicsInfo = graphicsOutput;
@@ -356,21 +437,27 @@ namespace AdbInstallerApp.Services
         private async Task GetSecurityInfoAsync(DeviceInfo device)
         {
             // SELinux Mode
-            var (selinuxCode, selinuxOutput, _) = await ProcessRunner.RunAsync(_adbPath, $"-s {device.Serial} shell getenforce");
+            var result = await Proc.RunAsync(_adbPath, $"-s {device.Serial} shell getenforce", null, _logBus != null ? new Progress<string>(_logBus.Write) : null);
+            var selinuxCode = result.ExitCode;
+            var selinuxOutput = result.StdOut;
             if (selinuxCode == 0)
             {
                 device.SelinuxMode = selinuxOutput.Trim();
             }
 
             // Kernel Version
-            var (kernelCode, kernelOutput, _) = await ProcessRunner.RunAsync(_adbPath, $"-s {device.Serial} shell cat /proc/version");
+            result = await Proc.RunAsync(_adbPath, $"-s {device.Serial} shell cat /proc/version", null, _logBus != null ? new Progress<string>(_logBus.Write) : null);
+            var kernelCode = result.ExitCode;
+            var kernelOutput = result.StdOut;
             if (kernelCode == 0)
             {
                 device.KernelVersion = kernelOutput.Trim();
             }
 
             // Check if device is rooted
-            var (rootCode, rootOutput, _) = await ProcessRunner.RunAsync(_adbPath, $"-s {device.Serial} shell which su");
+            result = await Proc.RunAsync(_adbPath, $"-s {device.Serial} shell which su", null, _logBus != null ? new Progress<string>(_logBus.Write) : null);
+            var rootCode = result.ExitCode;
+            var rootOutput = result.StdOut;
             device.IsRooted = rootCode == 0 && !string.IsNullOrWhiteSpace(rootOutput.Trim());
             if (device.IsRooted)
             {
@@ -378,18 +465,24 @@ namespace AdbInstallerApp.Services
             }
 
             // Check for Superuser app
-            var (superuserCode, superuserOutput, _) = await ProcessRunner.RunAsync(_adbPath, $"-s {device.Serial} shell ls /system/app/Superuser.apk");
+            result = await Proc.RunAsync(_adbPath, $"-s {device.Serial} shell ls /system/app/Superuser.apk", null, _logBus != null ? new Progress<string>(_logBus.Write) : null);
+            var superuserCode = result.ExitCode;
+            var superuserOutput = result.StdOut;
             device.HasSuperuserApp = superuserCode == 0 && !string.IsNullOrWhiteSpace(superuserOutput.Trim());
 
             // Check for xbin tools
-            var (xbinCode, xbinOutput, _) = await ProcessRunner.RunAsync(_adbPath, $"-s {device.Serial} shell ls /system/xbin/which");
+            result = await Proc.RunAsync(_adbPath, $"-s {device.Serial} shell ls /system/xbin/which", null, _logBus != null ? new Progress<string>(_logBus.Write) : null);
+            var xbinCode = result.ExitCode;
+            var xbinOutput = result.StdOut;
             device.HasXbinTools = xbinCode == 0 && !string.IsNullOrWhiteSpace(xbinOutput.Trim());
         }
 
         private async Task GetRuntimeInfoAsync(DeviceInfo device)
         {
             // Package Information
-            var (packagesCode, packagesOutput, _) = await ProcessRunner.RunAsync(_adbPath, $"-s {device.Serial} shell pm list packages");
+            var result = await Proc.RunAsync(_adbPath, $"-s {device.Serial} shell pm list packages", null, _logBus != null ? new Progress<string>(_logBus.Write) : null);
+            var packagesCode = result.ExitCode;
+            var packagesOutput = result.StdOut;
             if (packagesCode == 0)
             {
                 var packages = packagesOutput.Split(new[] { "\r\n", "\n" }, StringSplitOptions.RemoveEmptyEntries);
@@ -397,7 +490,9 @@ namespace AdbInstallerApp.Services
             }
 
             // Third-party packages
-            var (thirdPartyCode, thirdPartyOutput, _) = await ProcessRunner.RunAsync(_adbPath, $"-s {device.Serial} shell pm list packages -3");
+            result = await Proc.RunAsync(_adbPath, $"-s {device.Serial} shell pm list packages -3", null, _logBus != null ? new Progress<string>(_logBus.Write) : null);
+            var thirdPartyCode = result.ExitCode;
+            var thirdPartyOutput = result.StdOut;
             if (thirdPartyCode == 0)
             {
                 var thirdPartyPackages = thirdPartyOutput.Split(new[] { "\r\n", "\n" }, StringSplitOptions.RemoveEmptyEntries);
@@ -405,7 +500,9 @@ namespace AdbInstallerApp.Services
             }
 
             // System packages
-            var (systemCode, systemOutput, _) = await ProcessRunner.RunAsync(_adbPath, $"-s {device.Serial} shell pm list packages -s");
+            result = await Proc.RunAsync(_adbPath, $"-s {device.Serial} shell pm list packages -s", null, _logBus != null ? new Progress<string>(_logBus.Write) : null);
+            var systemCode = result.ExitCode;
+            var systemOutput = result.StdOut;
             if (systemCode == 0)
             {
                 var systemPackages = systemOutput.Split(new[] { "\r\n", "\n" }, StringSplitOptions.RemoveEmptyEntries);
@@ -413,7 +510,9 @@ namespace AdbInstallerApp.Services
             }
 
             // Disabled packages
-            var (disabledCode, disabledOutput, _) = await ProcessRunner.RunAsync(_adbPath, $"-s {device.Serial} shell pm list packages -d");
+            result = await Proc.RunAsync(_adbPath, $"-s {device.Serial} shell pm list packages -d", null, _logBus != null ? new Progress<string>(_logBus.Write) : null);
+            var disabledCode = result.ExitCode;
+            var disabledOutput = result.StdOut;
             if (disabledCode == 0)
             {
                 var disabledPackages = disabledOutput.Split(new[] { "\r\n", "\n" }, StringSplitOptions.RemoveEmptyEntries);
@@ -421,21 +520,27 @@ namespace AdbInstallerApp.Services
             }
 
             // Process Information
-            var (processCode, processOutput, _) = await ProcessRunner.RunAsync(_adbPath, $"-s {device.Serial} shell ps");
+            result = await Proc.RunAsync(_adbPath, $"-s {device.Serial} shell ps", null, _logBus != null ? new Progress<string>(_logBus.Write) : null);
+            var processCode = result.ExitCode;
+            var processOutput = result.StdOut;
             if (processCode == 0)
             {
                 device.ProcessInfo = processOutput;
             }
 
             // CPU Usage
-            var (cpuUsageCode, cpuUsageOutput, _) = await ProcessRunner.RunAsync(_adbPath, $"-s {device.Serial} shell top -n 1");
+            result = await Proc.RunAsync(_adbPath, $"-s {device.Serial} shell top -n 1", null, _logBus != null ? new Progress<string>(_logBus.Write) : null);
+            var cpuUsageCode = result.ExitCode;
+            var cpuUsageOutput = result.StdOut;
             if (cpuUsageCode == 0)
             {
                 device.CpuUsage = cpuUsageOutput;
             }
 
             // Activity Manager Information
-            var (activityCode, activityOutput, _) = await ProcessRunner.RunAsync(_adbPath, $"-s {device.Serial} shell dumpsys activity");
+            result = await Proc.RunAsync(_adbPath, $"-s {device.Serial} shell dumpsys activity", null, _logBus != null ? new Progress<string>(_logBus.Write) : null);
+            var activityCode = result.ExitCode;
+            var activityOutput = result.StdOut;
             if (activityCode == 0)
             {
                 device.ActivityManagerInfo = activityOutput;
@@ -447,7 +552,9 @@ namespace AdbInstallerApp.Services
             // Battery Temperature (alternative method)
             if (string.IsNullOrEmpty(device.BatteryTemperature))
             {
-                var (tempCode, tempOutput, _) = await ProcessRunner.RunAsync(_adbPath, $"-s {device.Serial} shell dumpsys battery | grep temperature");
+                var result = await Proc.RunAsync(_adbPath, $"-s {device.Serial} shell dumpsys battery | grep temperature", null, _logBus != null ? new Progress<string>(_logBus.Write) : null);
+                var tempCode = result.ExitCode;
+                var tempOutput = result.StdOut;
                 if (tempCode == 0)
                 {
                     var tempMatch = Regex.Match(tempOutput, @"temperature:\s*(\d+)");
@@ -460,14 +567,18 @@ namespace AdbInstallerApp.Services
             }
 
             // Thermal Zones
-            var (thermalCode, thermalOutput, _) = await ProcessRunner.RunAsync(_adbPath, $"-s {device.Serial} shell cat /sys/class/thermal/thermal_zone*/temp");
+            var thermalResult = await Proc.RunAsync(_adbPath, $"-s {device.Serial} shell cat /sys/class/thermal/thermal_zone*/temp", null, _logBus != null ? new Progress<string>(_logBus.Write) : null);
+            var thermalCode = thermalResult.ExitCode;
+            var thermalOutput = thermalResult.StdOut;
             if (thermalCode == 0)
             {
                 device.ThermalZones = thermalOutput;
             }
 
             // Sensor Information
-            var (sensorCode, sensorOutput, _) = await ProcessRunner.RunAsync(_adbPath, $"-s {device.Serial} shell dumpsys sensorservice");
+            var sensorResult = await Proc.RunAsync(_adbPath, $"-s {device.Serial} shell dumpsys sensorservice", null, _logBus != null ? new Progress<string>(_logBus.Write) : null);
+            var sensorCode = sensorResult.ExitCode;
+            var sensorOutput = sensorResult.StdOut;
             if (sensorCode == 0)
             {
                 device.SensorInfo = sensorOutput;
@@ -477,28 +588,36 @@ namespace AdbInstallerApp.Services
         private async Task GetDeveloperOptionsStatusAsync(DeviceInfo device)
         {
             // Developer Options Enabled
-            var (devOptsCode, devOptsOutput, _) = await ProcessRunner.RunAsync(_adbPath, $"-s {device.Serial} shell settings get global development_settings_enabled");
+            var result = await Proc.RunAsync(_adbPath, $"-s {device.Serial} shell settings get global development_settings_enabled", null, _logBus != null ? new Progress<string>(_logBus.Write) : null);
+            var devOptsCode = result.ExitCode;
+            var devOptsOutput = result.StdOut;
             if (devOptsCode == 0)
             {
                 device.DeveloperOptionsEnabled = devOptsOutput.Trim() == "1";
             }
 
             // ADB Enabled
-            var (adbCode, adbOutput, _) = await ProcessRunner.RunAsync(_adbPath, $"-s {device.Serial} shell settings get global adb_enabled");
+            result = await Proc.RunAsync(_adbPath, $"-s {device.Serial} shell settings get global adb_enabled", null, _logBus != null ? new Progress<string>(_logBus.Write) : null);
+            var adbCode = result.ExitCode;
+            var adbOutput = result.StdOut;
             if (adbCode == 0)
             {
                 device.AdbEnabled = adbOutput.Trim() == "1";
             }
 
             // USB Debugging Enabled
-            var (usbDebugCode, usbDebugOutput, _) = await ProcessRunner.RunAsync(_adbPath, $"-s {device.Serial} shell settings get global usb_debugging_enabled");
+            result = await Proc.RunAsync(_adbPath, $"-s {device.Serial} shell settings get global usb_debugging_enabled", null, _logBus != null ? new Progress<string>(_logBus.Write) : null);
+            var usbDebugCode = result.ExitCode;
+            var usbDebugOutput = result.StdOut;
             if (usbDebugCode == 0)
             {
                 device.UsbDebuggingEnabled = usbDebugOutput.Trim() == "1";
             }
 
             // Verify Apps Over USB
-            var (verifyCode, verifyOutput, _) = await ProcessRunner.RunAsync(_adbPath, $"-s {device.Serial} shell settings get global verify_apps_over_usb");
+            result = await Proc.RunAsync(_adbPath, $"-s {device.Serial} shell settings get global verify_apps_over_usb", null, _logBus != null ? new Progress<string>(_logBus.Write) : null);
+            var verifyCode = result.ExitCode;
+            var verifyOutput = result.StdOut;
             if (verifyCode == 0)
             {
                 device.VerifyAppsOverUsb = verifyOutput.Trim() == "1";
@@ -586,7 +705,10 @@ namespace AdbInstallerApp.Services
             }
 
             var args = $"-s {serial} install {opts} \"{apkPath}\"";
-            var (code, so, se) = await ProcessRunner.RunAsync(_adbPath, args);
+            var result = await Proc.RunAsync(_adbPath, args, null, _logBus != null ? new Progress<string>(_logBus.Write) : null);
+            var code = result.ExitCode;
+            var so = result.StdOut;
+            var se = result.StdErr;
             
             // Enhanced error handling
             var log = so + se;
@@ -628,15 +750,17 @@ namespace AdbInstallerApp.Services
             return (code == 0, log);
         }
 
-
         public async Task<(bool ok, string log)> InstallMultipleAsync(string serial, IEnumerable<string> apkPaths, string opts)
         {
             var apkList = apkPaths.ToList();
             
-            // Validate all APK files before installation
-            var validationService = new ApkValidationService();
-            var validationResults = new List<(string path, ApkValidationService.ApkValidationResult result)>();
+            System.Diagnostics.Debug.WriteLine($"InstallMultipleAsync: Installing {apkList.Count} APKs to {serial}");
+            foreach (var path in apkList)
+            {
+                System.Diagnostics.Debug.WriteLine($"  APK: {path}");
+            }
             
+            // Basic file existence check only - skip validation for install-multiple
             foreach (var apkPath in apkList)
             {
                 if (!File.Exists(apkPath))
@@ -649,26 +773,19 @@ namespace AdbInstallerApp.Services
                 {
                     return (false, $"APK file is empty: {apkPath}");
                 }
-
-                var validationResult = await validationService.ValidateApkAsync(apkPath);
-                validationResults.Add((apkPath, validationResult));
-                
-                if (!validationResult.IsValid)
-                {
-                    var errorLog = $"[VALIDATION FAILED] {Path.GetFileName(apkPath)}: {validationResult.ErrorMessage}\n";
-                    if (validationResult.Warnings.Any())
-                    {
-                        errorLog += "[WARNINGS]\n" + string.Join("\n", validationResult.Warnings.Select(w => $"  - {w}"));
-                    }
-                    return (false, errorLog);
-                }
             }
 
             var joined = string.Join(" ", apkList.Select(p => $"\"{p}\""));
             var args = $"-s {serial} install-multiple {opts} {joined}";
-            var (code, so, se) = await ProcessRunner.RunAsync(_adbPath, args);
             
-            // Enhanced error handling for multiple APKs
+            System.Diagnostics.Debug.WriteLine($"Running command: adb {args}");
+            var result = await Proc.RunAsync(_adbPath, args, null, _logBus != null ? new Progress<string>(_logBus.Write) : null);
+            var code = result.ExitCode;
+            var so = result.StdOut;
+            var se = result.StdErr;
+            
+            System.Diagnostics.Debug.WriteLine($"Install result: Code={code}, Output='{so}', Error='{se}'");
+            
             var log = so + se;
             if (code != 0)
             {
@@ -684,6 +801,10 @@ namespace AdbInstallerApp.Services
                            "5. Consider using the APK repair tool if available";
                 }
             }
+            else
+            {
+                log = $"[SUCCESS] Multiple APK installation completed\n{log}";
+            }
             
             return (code == 0, log);
         }
@@ -697,7 +818,9 @@ namespace AdbInstallerApp.Services
             
             try
             {
-                var (code, output, _) = await ProcessRunner.RunAsync(_adbPath, $"-s {serial} shell getprop");
+                var result = await Proc.RunAsync(_adbPath, $"-s {serial} shell getprop", null, _logBus != null ? new Progress<string>(_logBus.Write) : null);
+                var code = result.ExitCode;
+                var output = result.StdOut;
                 
                 if (code == 0)
                 {

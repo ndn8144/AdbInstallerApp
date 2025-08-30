@@ -1,17 +1,19 @@
-using AdbInstallerApp.Models;
 using AdbInstallerApp.Helpers;
-using System.IO;
+using AdbInstallerApp.Models;
+using AdbInstallerApp.Services;
 using System.Text.RegularExpressions;
 
 namespace AdbInstallerApp.Services
 {
-    public sealed class ApkExportService
+    public class ApkExportService
     {
         private readonly AdbService _adb;
+        private readonly ILogBus? _logBus; // Make nullable for backward compatibility
 
-        public ApkExportService(AdbService adb)
+        public ApkExportService(AdbService adb, ILogBus? logBus = null)
         {
-            _adb = adb ?? throw new ArgumentNullException(nameof(adb));
+            _adb = adb;
+            _logBus = logBus;
         }
 
         public async Task<ExportResult> ExportApkAsync(
@@ -140,7 +142,8 @@ namespace AdbInstallerApp.Services
         private async Task<List<string>> GetPackagePathsAsync(string serial, string packageName, CancellationToken ct)
         {
             var cmd = $"-s {serial} shell pm path {packageName}";
-            var (_, output, _) = await ProcessRunner.RunAsync(_adb.AdbPath, cmd, timeoutMs: 8000);
+            var result = await Proc.RunAsync(_adb.AdbPath, cmd, null, _logBus != null ? new Progress<string>(_logBus.Write) : null, ct);
+            var output = result.StdOut;
 
             return ParsePmPath(output);
         }
@@ -175,7 +178,10 @@ namespace AdbInstallerApp.Services
             {
                 // Use -p flag for progress
                 var cmd = $"-s {serial} pull -p \"{remotePath}\" \"{localPath}\"";
-                var (exitCode, stdout, stderr) = await ProcessRunner.RunAsync(_adb.AdbPath, cmd, timeoutMs: 60000);
+                var result = await Proc.RunAsync(_adb.AdbPath, cmd, null, _logBus != null ? new Progress<string>(_logBus.Write) : null, ct);
+                var exitCode = result.ExitCode;
+                var stdout = result.StdOut;
+                var stderr = result.StdErr;
 
                 // Update progress from stderr output
                 if (progress != null)
@@ -207,16 +213,18 @@ namespace AdbInstallerApp.Services
 
                 // Try to copy to sdcard first (if we have permission)
                 var copyCmd = $"-s {serial} shell cp \"{remotePath}\" \"{tempPath}\"";
-                var (copyCode, _, _) = await ProcessRunner.RunAsync(_adb.AdbPath, copyCmd, timeoutMs: 30000);
+                var copyResult = await Proc.RunAsync(_adb.AdbPath, copyCmd, null, _logBus != null ? new Progress<string>(_logBus.Write) : null, ct);
+                var copyCode = copyResult.ExitCode;
 
                 if (copyCode == 0)
                 {
                     // Pull from sdcard
                     var pullCmd = $"-s {serial} pull \"{tempPath}\" \"{localPath}\"";
-                    var (pullCode, _, _) = await ProcessRunner.RunAsync(_adb.AdbPath, pullCmd, timeoutMs: 30000);
+                    var pullResult = await Proc.RunAsync(_adb.AdbPath, pullCmd, null, _logBus != null ? new Progress<string>(_logBus.Write) : null, ct);
+                    var pullCode = pullResult.ExitCode;
 
                     // Cleanup
-                    _ = ProcessRunner.RunAsync(_adb.AdbPath, $"-s {serial} shell rm \"{tempPath}\"", timeoutMs: 5000);
+                    _ = Proc.RunAsync(_adb.AdbPath, $"-s {serial} shell rm \"{tempPath}\"", null, _logBus != null ? new Progress<string>(_logBus.Write) : null, ct);
 
                     return pullCode == 0 && File.Exists(localPath) && new FileInfo(localPath).Length > 0;
                 }

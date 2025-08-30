@@ -1,0 +1,23 @@
+<Project>
+  <PropertyGroup>
+    <!-- Enable nullable reference types globally -->
+    <Nullable>enable</Nullable>
+    
+    <!-- Modern code analysis -->
+    <AnalysisLevel>latest</AnalysisLevel>
+    <EnforceCodeStyleInBuild>true</EnforceCodeStyleInBuild>
+    
+    <!-- Warning configuration -->
+    <TreatWarningsAsErrors>false</TreatWarningsAsErrors>
+    <WarningsAsErrors>CS8600;CS8602;CS8625</WarningsAsErrors>
+    <WarningsNotAsErrors>CS8604;CS8601;CS8618</WarningsNotAsErrors>
+    
+    <!-- Suppress specific warnings temporarily during migration -->
+    <NoWarn>$(NoWarn);CS8603;CS8604;CS8618;CS8619;CS8620</NoWarn>
+  </PropertyGroup>
+  
+  <!-- Common package versions -->
+  <ItemGroup>
+    <GlobalPackageReference Include="CommunityToolkit.Mvvm" Version="8.4.0" />
+  </ItemGroup>
+</Project>

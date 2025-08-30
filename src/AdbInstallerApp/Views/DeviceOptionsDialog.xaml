@@ -1,0 +1,224 @@
+<Window x:Class="AdbInstallerApp.Views.DeviceOptionsDialog"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:vm="clr-namespace:AdbInstallerApp.ViewModels"
+        mc:Ignorable="d"
+        Title="Device Install Options" Height="650" Width="500"
+        Background="{StaticResource BackgroundBrush}"
+        WindowStartupLocation="CenterOwner"
+        ResizeMode="NoResize">
+    
+    <Window.Resources>
+        <Style TargetType="GroupBox">
+            <Setter Property="Margin" Value="0,10,0,0"/>
+            <Setter Property="Padding" Value="10"/>
+            <Setter Property="Background" Value="{StaticResource CardBackgroundBrush}"/>
+            <Setter Property="BorderBrush" Value="{StaticResource BorderBrush}"/>
+            <Setter Property="BorderThickness" Value="1"/>
+        </Style>
+        
+        <Style TargetType="CheckBox">
+            <Setter Property="Margin" Value="0,5"/>
+            <Setter Property="VerticalAlignment" Value="Center"/>
+        </Style>
+        
+        <Style TargetType="ComboBox">
+            <Setter Property="Margin" Value="0,5"/>
+            <Setter Property="Height" Value="30"/>
+        </Style>
+        
+        <Style TargetType="TextBox">
+            <Setter Property="Margin" Value="0,5"/>
+            <Setter Property="Height" Value="30"/>
+            <Setter Property="VerticalContentAlignment" Value="Center"/>
+        </Style>
+        
+        <Style TargetType="Label">
+            <Setter Property="Margin" Value="0,5,10,5"/>
+            <Setter Property="VerticalAlignment" Value="Center"/>
+        </Style>
+    </Window.Resources>
+    
+    <Grid Margin="20">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+        
+        <!-- Header -->
+        <TextBlock Grid.Row="0" 
+                   Text="{Binding DeviceDisplayName, StringFormat='Options for {0}'}"
+                   FontSize="18" FontWeight="Bold"
+                   Foreground="{StaticResource PrimaryTextBrush}"
+                   Margin="0,0,0,20"/>
+        
+        <!-- Options Panel -->
+        <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto">
+            <StackPanel>
+                
+                <!-- Basic Options -->
+                <GroupBox Header="Basic Installation Options">
+                    <StackPanel>
+                        <CheckBox Content="Reinstall (-r)" 
+                                  IsChecked="{Binding Options.Reinstall}"
+                                  ToolTip="Allow reinstalling existing packages"/>
+                        
+                        <CheckBox Content="Allow Downgrade (-d)" 
+                                  IsChecked="{Binding Options.AllowDowngrade}"
+                                  ToolTip="Allow installing lower version than currently installed"/>
+                        
+                        <CheckBox Content="Grant Runtime Permissions (-g)" 
+                                  IsChecked="{Binding Options.GrantRuntimePermissions}"
+                                  ToolTip="Grant all runtime permissions during installation"/>
+                        
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="Auto"/>
+                                <ColumnDefinition Width="*"/>
+                            </Grid.ColumnDefinitions>
+                            <Label Grid.Column="0" Content="User ID (--user):"/>
+                            <TextBox Grid.Column="1" 
+                                     Text="{Binding UserIdText, UpdateSourceTrigger=PropertyChanged}"
+                                     ToolTip="Install for specific user ID (leave empty for default)"/>
+                        </Grid>
+                    </StackPanel>
+                </GroupBox>
+                
+                <!-- APK Selection Strategy -->
+                <GroupBox Header="APK Selection Strategy">
+                    <StackPanel>
+                        <CheckBox Content="Prefer Highest Compatible Version" 
+                                  IsChecked="{Binding Options.PreferHighestCompatible}"
+                                  ToolTip="When multiple base APKs exist, select the highest compatible version"/>
+                        
+                        <Label Content="Split Matching Mode:"/>
+                        <ComboBox SelectedItem="{Binding Options.StrictSplitMatch}"
+                                  ItemsSource="{Binding AvailableSplitModes}"
+                                  ToolTip="How to handle split APK matching">
+                            <ComboBox.ItemTemplate>
+                                <DataTemplate>
+                                    <StackPanel>
+                                        <TextBlock Text="{Binding DisplayName}" FontWeight="Bold"/>
+                                        <TextBlock Text="{Binding Description}" 
+                                                   FontSize="11" Opacity="0.7"
+                                                   TextWrapping="Wrap"/>
+                                    </StackPanel>
+                                </DataTemplate>
+                            </ComboBox.ItemTemplate>
+                        </ComboBox>
+                    </StackPanel>
+                </GroupBox>
+                
+                <!-- Installation Strategy -->
+                <GroupBox Header="Installation Strategy">
+                    <StackPanel>
+                        <Label Content="Install Method:"/>
+                        <ComboBox SelectedItem="{Binding Options.InstallStrategy}"
+                                  ItemsSource="{Binding AvailableInstallStrategies}"
+                                  ToolTip="Choose installation method">
+                            <ComboBox.ItemTemplate>
+                                <DataTemplate>
+                                    <StackPanel>
+                                        <TextBlock Text="{Binding DisplayName}" FontWeight="Bold"/>
+                                        <TextBlock Text="{Binding Description}" 
+                                                   FontSize="11" Opacity="0.7"
+                                                   TextWrapping="Wrap"/>
+                                    </StackPanel>
+                                </DataTemplate>
+                            </ComboBox.ItemTemplate>
+                        </ComboBox>
+                        
+                        <Grid Margin="0,10,0,0">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="Auto"/>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="Auto"/>
+                            </Grid.ColumnDefinitions>
+                            <Label Grid.Column="0" Content="Throttle (MB/s):"/>
+                            <TextBox Grid.Column="1" 
+                                     Text="{Binding ThrottleText, UpdateSourceTrigger=PropertyChanged}"
+                                     ToolTip="Limit transfer speed for PM sessions (leave empty for no limit)"/>
+                            <TextBlock Grid.Column="2" Text="MB/s" 
+                                       VerticalAlignment="Center" Margin="5,0,0,0"/>
+                        </Grid>
+                    </StackPanel>
+                </GroupBox>
+                
+                <!-- Validation Options -->
+                <GroupBox Header="Validation &amp; Safety">
+                    <StackPanel>
+                        <CheckBox Content="Verify Signature Consistency" 
+                                  IsChecked="{Binding Options.VerifySignature}"
+                                  ToolTip="Ensure all APKs in a group have the same signature"/>
+                        
+                        <CheckBox Content="Verify Version Homogeneity" 
+                                  IsChecked="{Binding Options.VerifyVersionHomogeneity}"
+                                  ToolTip="Ensure all splits have the same version code as base APK"/>
+                    </StackPanel>
+                </GroupBox>
+                
+                <!-- Retry Policy -->
+                <GroupBox Header="Retry Policy">
+                    <StackPanel>
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="Auto"/>
+                                <ColumnDefinition Width="*"/>
+                            </Grid.ColumnDefinitions>
+                            <Label Grid.Column="0" Content="Max Retries:"/>
+                            <TextBox Grid.Column="1" 
+                                     Text="{Binding MaxRetriesText, UpdateSourceTrigger=PropertyChanged}"
+                                     ToolTip="Maximum number of retry attempts on failure"/>
+                        </Grid>
+                        
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="Auto"/>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="Auto"/>
+                            </Grid.ColumnDefinitions>
+                            <Label Grid.Column="0" Content="Timeout:"/>
+                            <TextBox Grid.Column="1" 
+                                     Text="{Binding TimeoutText, UpdateSourceTrigger=PropertyChanged}"
+                                     ToolTip="Timeout per installation attempt (in seconds)"/>
+                            <TextBlock Grid.Column="2" Text="seconds" 
+                                       VerticalAlignment="Center" Margin="5,0,0,0"/>
+                        </Grid>
+                    </StackPanel>
+                </GroupBox>
+                
+                <!-- Presets -->
+                <GroupBox Header="Quick Presets">
+                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
+                        <Button Content="Strict" Margin="5" Padding="15,5"
+                                Command="{Binding ApplyPresetCommand}" CommandParameter="Strict"
+                                ToolTip="Recommended settings for production"/>
+                        <Button Content="Relaxed" Margin="5" Padding="15,5"
+                                Command="{Binding ApplyPresetCommand}" CommandParameter="Relaxed"
+                                ToolTip="Permissive settings for development"/>
+                        <Button Content="Base-Only" Margin="5" Padding="15,5"
+                                Command="{Binding ApplyPresetCommand}" CommandParameter="BaseOnly"
+                                ToolTip="Install base APKs only, skip splits"/>
+                    </StackPanel>
+                </GroupBox>
+                
+            </StackPanel>
+        </ScrollViewer>
+        
+        <!-- Action Buttons -->
+        <StackPanel Grid.Row="2" Orientation="Horizontal" 
+                    HorizontalAlignment="Right" Margin="0,20,0,0">
+            <Button Content="Reset to Global" Margin="0,0,10,0" Padding="15,8"
+                    Command="{Binding ResetToGlobalCommand}"
+                    ToolTip="Reset to global default options"/>
+            <Button Content="Cancel" Margin="0,0,10,0" Padding="15,8"
+                    IsCancel="True"/>
+            <Button Content="Apply" Padding="15,8"
+                    IsDefault="True"
+                    Command="{Binding ApplyCommand}"/>
+        </StackPanel>
+    </Grid>
+</Window>

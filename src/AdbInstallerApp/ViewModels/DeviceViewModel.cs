@@ -17,7 +17,13 @@ namespace AdbInstallerApp.ViewModels
         public bool IsSelected
         {
             get => _isSelected;
-            set => SetProperty(ref _isSelected, value);
+            set 
+            { 
+                if (SetProperty(ref _isSelected, value))
+                {
+                    System.Diagnostics.Debug.WriteLine($"Device {Serial} selection changed to {value}");
+                }
+            }
         }
 
         // Basic Device Information
