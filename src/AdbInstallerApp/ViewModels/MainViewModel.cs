@@ -22,6 +22,7 @@ namespace AdbInstallerApp.ViewModels
         private readonly ApkRepoIndexer _repo = null!;
         public readonly InstallOrchestrator _installer = null!;
         private readonly ApkValidationService _apkValidator = null!;
+        private readonly IApkAnalyzerService _apkAnalyzer = null!;
         private readonly AdvancedInstallOrchestrator? _multiGroupInstaller = null;
         private System.Threading.Timer? _refreshTimer;
 
@@ -151,11 +152,12 @@ namespace AdbInstallerApp.ViewModels
 
                 _monitor = deviceMonitor;
                 _repo = apkRepoIndexer;
-                _apkValidator = apkValidationService;
-                _installer = installOrchestrator;
-                // TODO: Fix EnhancedInstallOrchestrator - temporarily commented out
-                // _multiGroupInstaller = new EnhancedInstallOrchestrator(_adb, Path.Combine(AppContext.BaseDirectory, "..", "..", "..", "tools", "platform-tools"));
-                _multiGroupInstaller = null; // Temporary fix
+                                     _apkValidator = apkValidationService;
+                     _installer = installOrchestrator;
+                     _apkAnalyzer = apkAnalyzerService;
+                     // TODO: Fix EnhancedInstallOrchestrator - temporarily commented out
+                     // _multiGroupInstaller = new EnhancedInstallOrchestrator(_adb, Path.Combine(AppContext.BaseDirectory, "..", "..", "..", "tools", "platform-tools"));
+                     _multiGroupInstaller = null; // Temporary fix
 
                 InstallQueue = enhancedInstallQueue;
                 // KeyboardShortcuts will be initialized after InstallQueue is ready
