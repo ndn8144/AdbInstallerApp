@@ -4,6 +4,7 @@
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:vm="clr-namespace:AdbInstallerApp.ViewModels"
+        xmlns:views="clr-namespace:AdbInstallerApp.Views"
         xmlns:converters="clr-namespace:AdbInstallerApp.Converters"
         mc:Ignorable="d"
         Title="ADB Installer App" Height="800" Width="1400"
@@ -18,11 +19,11 @@
         <converters:StringToVisibilityConverter x:Key="StringToVisibilityConverter"/>
         <converters:MultiValueConverter x:Key="MultiValueConverter"/>
         <converters:IndexToNumberConverter x:Key="IndexToNumberConverter"/>
+        <converters:LogLevelToBackgroundConverter x:Key="LogLevelToBackgroundConverter"/>
+        <converters:LogLevelToForegroundConverter x:Key="LogLevelToForegroundConverter"/>
     </Window.Resources>
     
-    <Window.DataContext>
-        <vm:MainViewModel/>
-    </Window.DataContext>
+
     
     <Grid>
         <Grid.RowDefinitions>
@@ -151,6 +152,12 @@
                                 Style="{StaticResource NavigationButtonStyle}"
                                 Command="{Binding NavigateToInstalledAppsCommand}"
                                 Tag="InstalledApps"/>
+                        
+                        <Button Content="📝 Application Logs" 
+                                Style="{StaticResource NavigationButtonStyle}"
+                                Command="{Binding NavigateToLogsCommand}"
+                                Tag="Logs"
+                                ToolTip="View application logs and system status"/>
                         
                         <Button Content="📈 Reports" 
                                 Style="{StaticResource NavigationButtonStyle}"
@@ -1823,6 +1830,40 @@
                                     </ListBox.ItemTemplate>
                                 </ListBox>
                             </Border>
+                        </Grid>
+                    </Grid>
+                </Grid>
+                
+                <!-- Logs Module -->
+                <Grid x:Name="LogsContent" 
+                      Visibility="{Binding CurrentModule, Converter={StaticResource ModuleToVisibilityConverter}, ConverterParameter='Logs'}">
+                    <Grid Background="{DynamicResource MaterialDesignPaper}">
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="*"/>
+                        </Grid.RowDefinitions>
+                        
+                        <!-- Header -->
+                        <Grid Grid.Row="0" Margin="16,8,16,8">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="Auto" />
+                            </Grid.ColumnDefinitions>
+                            <StackPanel Orientation="Horizontal">
+                                <TextBlock Text="Application Logs" FontSize="20" FontWeight="SemiBold"/>
+                                <TextBlock Text="Real-time logging and system status monitoring" Foreground="#7A7A7A" Margin="8,3,0,0"/>
+                            </StackPanel>
+                            <StackPanel Grid.Column="1" Orientation="Horizontal">
+                                <Button Content="🧪 Test Log Performance" Command="{Binding TestLogPerformanceCommand}" 
+                                        Style="{StaticResource ModernButtonStyle}" Margin="0,0,8,0" MinWidth="140" />
+                                <Button Content="🧪 Test Status Stack" Command="{Binding TestStatusStackCommand}" 
+                                        Style="{StaticResource ModernButtonStyle}" MinWidth="140" />
+                            </StackPanel>
+                        </Grid>
+
+                        <!-- Log Viewer Content -->
+                        <Grid Grid.Row="1" Margin="16">
+                            <views:LogViewer/>
                         </Grid>
                     </Grid>
                 </Grid>

@@ -11,10 +11,12 @@ namespace AdbInstallerApp.Services
     {
         private readonly string _adbPath;
         private readonly ILogBus? _logBus; // Make nullable for backward compatibility
+        private readonly GlobalStatusService? _statusService;
 
-        public AdbService(ILogBus? logBus = null)
+        public AdbService(ILogBus? logBus = null, GlobalStatusService? statusService = null)
         {
             _logBus = logBus;
+            _statusService = statusService;
             // Prefer bundled adb under solution root / tools/platform-tools
             var baseDir = AppContext.BaseDirectory;
             var toolsCandidate = Path.GetFullPath(Path.Combine(baseDir, "..", "..", "..", "tools", "platform-tools", "adb.exe"));
@@ -37,16 +39,28 @@ namespace AdbInstallerApp.Services
 
         public string AdbPath => _adbPath;
 
+        // Private helper method for consistent ADB command execution
+        private async Task<ProcResult> RunAdbAsync(string args, CancellationToken ct = default)
+        {
+            return await Proc.RunAsync(_adbPath, args,
+                log: _logBus != null ? new Progress<string>(_logBus.Write) : null, ct: ct)
+                .ConfigureAwait(false);
+        }
+
         public async Task StartServerAsync()
         {
-            await Proc.RunAsync(_adbPath, "start-server", null, _logBus != null ? new Progress<string>(_logBus.Write) : null);
+            var result = await RunAdbAsync("start-server");
+            if (result.ExitCode != 0)
+            {
+                _logBus?.WriteWarning($"ADB start-server failed: {result.StdErr}");
+            }
         }
 
 
         public async Task<List<DeviceInfo>> ListDevicesAsync()
         {
             var list = new List<DeviceInfo>();
-            var result = await Proc.RunAsync(_adbPath, "devices", null, _logBus != null ? new Progress<string>(_logBus.Write) : null);
+            var result = await RunAdbAsync("devices");
             var code = result.ExitCode;
             var stdout = result.StdOut;
             
@@ -172,7 +186,7 @@ namespace AdbInstallerApp.Services
 
         private async Task GetDevicePropertiesAsync(DeviceInfo device)
         {
-            var result = await Proc.RunAsync(_adbPath, $"-s {device.Serial} shell getprop", null, _logBus != null ? new Progress<string>(_logBus.Write) : null);
+            var result = await RunAdbAsync($"-s {device.Serial} shell getprop");
             var code = result.ExitCode;
             var stdout = result.StdOut;
             if (code == 0)
@@ -275,7 +289,7 @@ namespace AdbInstallerApp.Services
         private async Task GetHardwareInfoAsync(DeviceInfo device)
         {
             // CPU Information
-            var result = await Proc.RunAsync(_adbPath, $"-s {device.Serial} shell cat /proc/cpuinfo", null, _logBus != null ? new Progress<string>(_logBus.Write) : null);
+            var result = await RunAdbAsync($"-s {device.Serial} shell cat /proc/cpuinfo");
             var cpuCode = result.ExitCode;
             var cpuOutput = result.StdOut;
             if (cpuCode == 0)
@@ -284,7 +298,7 @@ namespace AdbInstallerApp.Services
             }
 
             // Memory Information
-            result = await Proc.RunAsync(_adbPath, $"-s {device.Serial} shell cat /proc/meminfo", null, _logBus != null ? new Progress<string>(_logBus.Write) : null);
+            result = await RunAdbAsync($"-s {device.Serial} shell cat /proc/meminfo");
             var memCode = result.ExitCode;
             var memOutput = result.StdOut;
             if (memCode == 0)
@@ -293,7 +307,7 @@ namespace AdbInstallerApp.Services
             }
 
             // Storage Information
-            result = await Proc.RunAsync(_adbPath, $"-s {device.Serial} shell df", null, _logBus != null ? new Progress<string>(_logBus.Write) : null);
+            result = await RunAdbAsync($"-s {device.Serial} shell df");
             var storageCode = result.ExitCode;
             var storageOutput = result.StdOut;
             if (storageCode == 0)
@@ -302,7 +316,7 @@ namespace AdbInstallerApp.Services
             }
 
             // Partition Information
-            result = await Proc.RunAsync(_adbPath, $"-s {device.Serial} shell cat /proc/partitions", null, _logBus != null ? new Progress<string>(_logBus.Write) : null);
+            result = await RunAdbAsync($"-s {device.Serial} shell cat /proc/partitions");
             var partCode = result.ExitCode;
             var partOutput = result.StdOut;
             if (partCode == 0)
@@ -311,7 +325,7 @@ namespace AdbInstallerApp.Services
             }
 
             // Battery Information
-            result = await Proc.RunAsync(_adbPath, $"-s {device.Serial} shell dumpsys battery", null, _logBus != null ? new Progress<string>(_logBus.Write) : null);
+            result = await RunAdbAsync($"-s {device.Serial} shell dumpsys battery");
             var batteryCode = result.ExitCode;
             var batteryOutput = result.StdOut;
             if (batteryCode == 0)
@@ -338,7 +352,7 @@ namespace AdbInstallerApp.Services
             }
 
             // Battery capacity
-            result = await Proc.RunAsync(_adbPath, $"-s {device.Serial} shell cat /sys/class/power_supply/battery/capacity", null, _logBus != null ? new Progress<string>(_logBus.Write) : null);
+            result = await RunAdbAsync($"-s {device.Serial} shell cat /sys/class/power_supply/battery/capacity");
             var capacityCode = result.ExitCode;
             var capacityOutput = result.StdOut;
             if (capacityCode == 0 && string.IsNullOrEmpty(device.BatteryLevel))
@@ -350,7 +364,7 @@ namespace AdbInstallerApp.Services
         private async Task GetNetworkInfoAsync(DeviceInfo device)
         {
             // Network Interfaces
-            var result = await Proc.RunAsync(_adbPath, $"-s {device.Serial} shell ip addr show", null, _logBus != null ? new Progress<string>(_logBus.Write) : null);
+            var result = await RunAdbAsync($"-s {device.Serial} shell ip addr show");
             var netCode = result.ExitCode;
             var netOutput = result.StdOut;
             if (netCode == 0)
@@ -359,7 +373,7 @@ namespace AdbInstallerApp.Services
             }
 
             // WiFi Information
-            result = await Proc.RunAsync(_adbPath, $"-s {device.Serial} shell dumpsys wifi", null, _logBus != null ? new Progress<string>(_logBus.Write) : null);
+            result = await RunAdbAsync($"-s {device.Serial} shell dumpsys wifi");
             var wifiCode = result.ExitCode;
             var wifiOutput = result.StdOut;
             if (wifiCode == 0)
@@ -376,7 +390,7 @@ namespace AdbInstallerApp.Services
             }
 
             // Connectivity Information
-            result = await Proc.RunAsync(_adbPath, $"-s {device.Serial} shell dumpsys connectivity", null, _logBus != null ? new Progress<string>(_logBus.Write) : null);
+            result = await RunAdbAsync($"-s {device.Serial} shell dumpsys connectivity");
             var connCode = result.ExitCode;
             var connOutput = result.StdOut;
             if (connCode == 0)
@@ -386,7 +400,7 @@ namespace AdbInstallerApp.Services
             }
 
             // Network Statistics
-            result = await Proc.RunAsync(_adbPath, $"-s {device.Serial} shell cat /proc/net/dev", null, _logBus != null ? new Progress<string>(_logBus.Write) : null);
+            result = await RunAdbAsync($"-s {device.Serial} shell cat /proc/net/dev");
             var statsCode = result.ExitCode;
             var statsOutput = result.StdOut;
             if (statsCode == 0)
@@ -398,7 +412,7 @@ namespace AdbInstallerApp.Services
         private async Task GetDisplayInfoAsync(DeviceInfo device)
         {
             // Screen Resolution
-            var result = await Proc.RunAsync(_adbPath, $"-s {device.Serial} shell wm size", null, _logBus != null ? new Progress<string>(_logBus.Write) : null);
+            var result = await RunAdbAsync($"-s {device.Serial} shell wm size");
             var sizeCode = result.ExitCode;
             var sizeOutput = result.StdOut;
             if (sizeCode == 0)
@@ -407,7 +421,7 @@ namespace AdbInstallerApp.Services
             }
 
             // Screen Density
-            result = await Proc.RunAsync(_adbPath, $"-s {device.Serial} shell wm density", null, _logBus != null ? new Progress<string>(_logBus.Write) : null);
+            result = await RunAdbAsync($"-s {device.Serial} shell wm density");
             var densityCode = result.ExitCode;
             var densityOutput = result.StdOut;
             if (densityCode == 0)
@@ -416,7 +430,7 @@ namespace AdbInstallerApp.Services
             }
 
             // Display Information
-            result = await Proc.RunAsync(_adbPath, $"-s {device.Serial} shell dumpsys display", null, _logBus != null ? new Progress<string>(_logBus.Write) : null);
+            result = await RunAdbAsync($"-s {device.Serial} shell dumpsys display");
             var displayCode = result.ExitCode;
             var displayOutput = result.StdOut;
             if (displayCode == 0)
@@ -425,7 +439,7 @@ namespace AdbInstallerApp.Services
             }
 
             // Graphics Information
-            result = await Proc.RunAsync(_adbPath, $"-s {device.Serial} shell dumpsys SurfaceFlinger", null, _logBus != null ? new Progress<string>(_logBus.Write) : null);
+            result = await RunAdbAsync($"-s {device.Serial} shell dumpsys SurfaceFlinger");
             var graphicsCode = result.ExitCode;
             var graphicsOutput = result.StdOut;
             if (graphicsCode == 0)
@@ -437,7 +451,7 @@ namespace AdbInstallerApp.Services
         private async Task GetSecurityInfoAsync(DeviceInfo device)
         {
             // SELinux Mode
-            var result = await Proc.RunAsync(_adbPath, $"-s {device.Serial} shell getenforce", null, _logBus != null ? new Progress<string>(_logBus.Write) : null);
+            var result = await RunAdbAsync($"-s {device.Serial} shell getenforce");
             var selinuxCode = result.ExitCode;
             var selinuxOutput = result.StdOut;
             if (selinuxCode == 0)
@@ -446,7 +460,7 @@ namespace AdbInstallerApp.Services
             }
 
             // Kernel Version
-            result = await Proc.RunAsync(_adbPath, $"-s {device.Serial} shell cat /proc/version", null, _logBus != null ? new Progress<string>(_logBus.Write) : null);
+            result = await RunAdbAsync($"-s {device.Serial} shell cat /proc/version");
             var kernelCode = result.ExitCode;
             var kernelOutput = result.StdOut;
             if (kernelCode == 0)
@@ -455,7 +469,7 @@ namespace AdbInstallerApp.Services
             }
 
             // Check if device is rooted
-            result = await Proc.RunAsync(_adbPath, $"-s {device.Serial} shell which su", null, _logBus != null ? new Progress<string>(_logBus.Write) : null);
+            result = await RunAdbAsync($"-s {device.Serial} shell which su");
             var rootCode = result.ExitCode;
             var rootOutput = result.StdOut;
             device.IsRooted = rootCode == 0 && !string.IsNullOrWhiteSpace(rootOutput.Trim());
@@ -465,13 +479,13 @@ namespace AdbInstallerApp.Services
             }
 
             // Check for Superuser app
-            result = await Proc.RunAsync(_adbPath, $"-s {device.Serial} shell ls /system/app/Superuser.apk", null, _logBus != null ? new Progress<string>(_logBus.Write) : null);
+            result = await RunAdbAsync($"-s {device.Serial} shell ls /system/app/Superuser.apk");
             var superuserCode = result.ExitCode;
             var superuserOutput = result.StdOut;
             device.HasSuperuserApp = superuserCode == 0 && !string.IsNullOrWhiteSpace(superuserOutput.Trim());
 
             // Check for xbin tools
-            result = await Proc.RunAsync(_adbPath, $"-s {device.Serial} shell ls /system/xbin/which", null, _logBus != null ? new Progress<string>(_logBus.Write) : null);
+            result = await RunAdbAsync($"-s {device.Serial} shell ls /system/xbin/which");
             var xbinCode = result.ExitCode;
             var xbinOutput = result.StdOut;
             device.HasXbinTools = xbinCode == 0 && !string.IsNullOrWhiteSpace(xbinOutput.Trim());
@@ -480,7 +494,7 @@ namespace AdbInstallerApp.Services
         private async Task GetRuntimeInfoAsync(DeviceInfo device)
         {
             // Package Information
-            var result = await Proc.RunAsync(_adbPath, $"-s {device.Serial} shell pm list packages", null, _logBus != null ? new Progress<string>(_logBus.Write) : null);
+            var result = await RunAdbAsync($"-s {device.Serial} shell pm list packages");
             var packagesCode = result.ExitCode;
             var packagesOutput = result.StdOut;
             if (packagesCode == 0)
@@ -490,7 +504,7 @@ namespace AdbInstallerApp.Services
             }
 
             // Third-party packages
-            result = await Proc.RunAsync(_adbPath, $"-s {device.Serial} shell pm list packages -3", null, _logBus != null ? new Progress<string>(_logBus.Write) : null);
+            result = await RunAdbAsync($"-s {device.Serial} shell pm list packages -3");
             var thirdPartyCode = result.ExitCode;
             var thirdPartyOutput = result.StdOut;
             if (thirdPartyCode == 0)
@@ -500,7 +514,7 @@ namespace AdbInstallerApp.Services
             }
 
             // System packages
-            result = await Proc.RunAsync(_adbPath, $"-s {device.Serial} shell pm list packages -s", null, _logBus != null ? new Progress<string>(_logBus.Write) : null);
+            result = await RunAdbAsync($"-s {device.Serial} shell pm list packages -s");
             var systemCode = result.ExitCode;
             var systemOutput = result.StdOut;
             if (systemCode == 0)
@@ -510,7 +524,7 @@ namespace AdbInstallerApp.Services
             }
 
             // Disabled packages
-            result = await Proc.RunAsync(_adbPath, $"-s {device.Serial} shell pm list packages -d", null, _logBus != null ? new Progress<string>(_logBus.Write) : null);
+            result = await RunAdbAsync($"-s {device.Serial} shell pm list packages -d");
             var disabledCode = result.ExitCode;
             var disabledOutput = result.StdOut;
             if (disabledCode == 0)
@@ -520,7 +534,7 @@ namespace AdbInstallerApp.Services
             }
 
             // Process Information
-            result = await Proc.RunAsync(_adbPath, $"-s {device.Serial} shell ps", null, _logBus != null ? new Progress<string>(_logBus.Write) : null);
+            result = await RunAdbAsync($"-s {device.Serial} shell ps");
             var processCode = result.ExitCode;
             var processOutput = result.StdOut;
             if (processCode == 0)
@@ -529,7 +543,7 @@ namespace AdbInstallerApp.Services
             }
 
             // CPU Usage
-            result = await Proc.RunAsync(_adbPath, $"-s {device.Serial} shell top -n 1", null, _logBus != null ? new Progress<string>(_logBus.Write) : null);
+            result = await RunAdbAsync($"-s {device.Serial} shell top -n 1");
             var cpuUsageCode = result.ExitCode;
             var cpuUsageOutput = result.StdOut;
             if (cpuUsageCode == 0)
@@ -538,7 +552,7 @@ namespace AdbInstallerApp.Services
             }
 
             // Activity Manager Information
-            result = await Proc.RunAsync(_adbPath, $"-s {device.Serial} shell dumpsys activity", null, _logBus != null ? new Progress<string>(_logBus.Write) : null);
+            result = await RunAdbAsync($"-s {device.Serial} shell dumpsys activity");
             var activityCode = result.ExitCode;
             var activityOutput = result.StdOut;
             if (activityCode == 0)
@@ -552,7 +566,7 @@ namespace AdbInstallerApp.Services
             // Battery Temperature (alternative method)
             if (string.IsNullOrEmpty(device.BatteryTemperature))
             {
-                var result = await Proc.RunAsync(_adbPath, $"-s {device.Serial} shell dumpsys battery | grep temperature", null, _logBus != null ? new Progress<string>(_logBus.Write) : null);
+                var result = await RunAdbAsync($"-s {device.Serial} shell dumpsys battery | grep temperature");
                 var tempCode = result.ExitCode;
                 var tempOutput = result.StdOut;
                 if (tempCode == 0)
@@ -567,7 +581,7 @@ namespace AdbInstallerApp.Services
             }
 
             // Thermal Zones
-            var thermalResult = await Proc.RunAsync(_adbPath, $"-s {device.Serial} shell cat /sys/class/thermal/thermal_zone*/temp", null, _logBus != null ? new Progress<string>(_logBus.Write) : null);
+            var thermalResult = await RunAdbAsync($"-s {device.Serial} shell cat /sys/class/thermal/thermal_zone*/temp");
             var thermalCode = thermalResult.ExitCode;
             var thermalOutput = thermalResult.StdOut;
             if (thermalCode == 0)
@@ -576,7 +590,7 @@ namespace AdbInstallerApp.Services
             }
 
             // Sensor Information
-            var sensorResult = await Proc.RunAsync(_adbPath, $"-s {device.Serial} shell dumpsys sensorservice", null, _logBus != null ? new Progress<string>(_logBus.Write) : null);
+            var sensorResult = await RunAdbAsync($"-s {device.Serial} shell dumpsys sensorservice");
             var sensorCode = sensorResult.ExitCode;
             var sensorOutput = sensorResult.StdOut;
             if (sensorCode == 0)
@@ -588,7 +602,7 @@ namespace AdbInstallerApp.Services
         private async Task GetDeveloperOptionsStatusAsync(DeviceInfo device)
         {
             // Developer Options Enabled
-            var result = await Proc.RunAsync(_adbPath, $"-s {device.Serial} shell settings get global development_settings_enabled", null, _logBus != null ? new Progress<string>(_logBus.Write) : null);
+            var result = await RunAdbAsync($"-s {device.Serial} shell settings get global development_settings_enabled");
             var devOptsCode = result.ExitCode;
             var devOptsOutput = result.StdOut;
             if (devOptsCode == 0)
@@ -597,7 +611,7 @@ namespace AdbInstallerApp.Services
             }
 
             // ADB Enabled
-            result = await Proc.RunAsync(_adbPath, $"-s {device.Serial} shell settings get global adb_enabled", null, _logBus != null ? new Progress<string>(_logBus.Write) : null);
+            result = await RunAdbAsync($"-s {device.Serial} shell settings get global adb_enabled");
             var adbCode = result.ExitCode;
             var adbOutput = result.StdOut;
             if (adbCode == 0)
@@ -606,7 +620,7 @@ namespace AdbInstallerApp.Services
             }
 
             // USB Debugging Enabled
-            result = await Proc.RunAsync(_adbPath, $"-s {device.Serial} shell settings get global usb_debugging_enabled", null, _logBus != null ? new Progress<string>(_logBus.Write) : null);
+            result = await RunAdbAsync($"-s {device.Serial} shell settings get global usb_debugging_enabled");
             var usbDebugCode = result.ExitCode;
             var usbDebugOutput = result.StdOut;
             if (usbDebugCode == 0)
@@ -615,7 +629,7 @@ namespace AdbInstallerApp.Services
             }
 
             // Verify Apps Over USB
-            result = await Proc.RunAsync(_adbPath, $"-s {device.Serial} shell settings get global verify_apps_over_usb", null, _logBus != null ? new Progress<string>(_logBus.Write) : null);
+            result = await RunAdbAsync($"-s {device.Serial} shell settings get global verify_apps_over_usb");
             var verifyCode = result.ExitCode;
             var verifyOutput = result.StdOut;
             if (verifyCode == 0)
@@ -705,7 +719,7 @@ namespace AdbInstallerApp.Services
             }
 
             var args = $"-s {serial} install {opts} \"{apkPath}\"";
-            var result = await Proc.RunAsync(_adbPath, args, null, _logBus != null ? new Progress<string>(_logBus.Write) : null);
+            var result = await RunAdbAsync(args);
             var code = result.ExitCode;
             var so = result.StdOut;
             var se = result.StdErr;
@@ -779,7 +793,7 @@ namespace AdbInstallerApp.Services
             var args = $"-s {serial} install-multiple {opts} {joined}";
             
             System.Diagnostics.Debug.WriteLine($"Running command: adb {args}");
-            var result = await Proc.RunAsync(_adbPath, args, null, _logBus != null ? new Progress<string>(_logBus.Write) : null);
+            var result = await RunAdbAsync(args);
             var code = result.ExitCode;
             var so = result.StdOut;
             var se = result.StdErr;
@@ -818,7 +832,7 @@ namespace AdbInstallerApp.Services
             
             try
             {
-                var result = await Proc.RunAsync(_adbPath, $"-s {serial} shell getprop", null, _logBus != null ? new Progress<string>(_logBus.Write) : null);
+                var result = await RunAdbAsync($"-s {serial} shell getprop");
                 var code = result.ExitCode;
                 var output = result.StdOut;
                 
@@ -874,5 +888,216 @@ namespace AdbInstallerApp.Services
             var (success, _) = await InstallMultipleAsync(serial, apkPaths, opts);
             return success;
         }
+
+        #region PM Session Installation Support
+
+        /// <summary>
+        /// Create PM install session - returns session ID
+        /// </summary>
+        public async Task<string> CreateInstallSessionAsync(string serial, InstallSessionOptions options, CancellationToken ct = default)
+        {
+            var flags = BuildSessionFlags(options);
+            var result = await RunAdbAsync($"-s {serial} shell pm install-create {flags}", ct);
+            
+            if (result.ExitCode != 0)
+            {
+                var error = !string.IsNullOrWhiteSpace(result.StdErr) ? result.StdErr : result.StdOut;
+                throw new InvalidOperationException($"Failed to create install session: {error.Trim()}");
+            }
+            
+            // Parse session ID from "Success: created install session [12345]"
+            var match = Regex.Match(result.StdOut, @"\[(\d+)\]");
+            if (!match.Success)
+            {
+                throw new InvalidOperationException($"Could not parse session ID from: {result.StdOut}");
+            }
+            
+            var sessionId = match.Groups[1].Value;
+            _logBus?.Write($"Created PM install session: {sessionId}");
+            return sessionId;
+        }
+
+        /// <summary>
+        /// Write APK file to PM session with progress tracking
+        /// </summary>
+        public async Task WriteToSessionAsync(string serial, string sessionId, string apkPath, 
+            IProgress<long>? progress = null, CancellationToken ct = default)
+        {
+            var fileInfo = new FileInfo(apkPath);
+            if (!fileInfo.Exists)
+                throw new FileNotFoundException($"APK file not found: {apkPath}");
+            
+            var fileName = fileInfo.Name;
+            var fileSize = fileInfo.Length;
+            
+            _logBus?.Write($"Writing {fileName} ({FormatBytes(fileSize)}) to session {sessionId}");
+            
+            // Use streaming approach for large files
+            await StreamApkToSessionAsync(serial, sessionId, apkPath, fileName, fileSize, progress, ct);
+        }
+
+        /// <summary>
+        /// Commit PM install session
+        /// </summary>
+        public async Task<bool> CommitInstallSessionAsync(string serial, string sessionId, CancellationToken ct = default)
+        {
+            _logBus?.Write($"Committing install session: {sessionId}");
+            
+            var result = await RunAdbAsync($"-s {serial} shell pm install-commit {sessionId}", ct);
+            
+            if (result.ExitCode != 0)
+            {
+                var error = !string.IsNullOrWhiteSpace(result.StdErr) ? result.StdErr : result.StdOut;
+                // Parse specific PM error codes
+                var errorType = ParseInstallError(error);
+                throw new InstallationException($"Install session {sessionId} failed: {error.Trim()}", errorType);
+            }
+            
+            _logBus?.Write($"Successfully committed session: {sessionId}");
+            return true;
+        }
+
+        /// <summary>
+        /// Abandon PM install session (cleanup)
+        /// </summary>
+        public async Task AbandonInstallSessionAsync(string serial, string sessionId, CancellationToken ct = default)
+        {
+            try
+            {
+                _logBus?.Write($"Abandoning install session: {sessionId}");
+                var result = await RunAdbAsync($"-s {serial} shell pm install-abandon {sessionId}", ct);
+                // Don't throw on abandon failures - best effort cleanup
+            }
+            catch (Exception ex)
+            {
+                _logBus?.WriteWarning($"Failed to abandon session {sessionId}: {ex.Message}");
+            }
+        }
+
+        private async Task StreamApkToSessionAsync(string serial, string sessionId, string apkPath, 
+            string fileName, long fileSize, IProgress<long>? progress, CancellationToken ct)
+        {
+            var args = $"-s {serial} shell pm install-write -S {fileSize} {sessionId} \"{fileName}\" -";
+            
+            var psi = new ProcessStartInfo(_adbPath, args)
+            {
+                UseShellExecute = false,
+                RedirectStandardInput = true,
+                RedirectStandardOutput = true,
+                RedirectStandardError = true,
+                CreateNoWindow = true
+            };
+
+            using var process = new Process { StartInfo = psi, EnableRaisingEvents = true };
+            
+            if (!process.Start())
+                throw new InvalidOperationException("Failed to start ADB process for streaming");
+
+            try
+            {
+                await using var fileStream = File.OpenRead(apkPath);
+                var buffer = new byte[256 * 1024]; // 256KB chunks
+                long totalWritten = 0;
+                
+                while (totalWritten < fileSize)
+                {
+                    ct.ThrowIfCancellationRequested();
+                    
+                    var remaining = fileSize - totalWritten;
+                    var toRead = (int)Math.Min(buffer.Length, remaining);
+                    
+                    var bytesRead = await fileStream.ReadAsync(buffer.AsMemory(0, toRead), ct);
+                    if (bytesRead == 0) break;
+
+                    await process.StandardInput.BaseStream.WriteAsync(buffer.AsMemory(0, bytesRead), ct);
+                    
+                    totalWritten += bytesRead;
+                    progress?.Report(totalWritten);
+                }
+
+                process.StandardInput.Close();
+                await process.WaitForExitAsync(ct);
+                
+                if (process.ExitCode != 0)
+                {
+                    var error = await process.StandardError.ReadToEndAsync();
+                    throw new InvalidOperationException($"PM install-write failed: {error}");
+                }
+            }
+            finally
+            {
+                if (!process.HasExited)
+                {
+                    try { process.Kill(entireProcessTree: true); } 
+                    catch { /* Ignore cleanup failures */ }
+                }
+            }
+        }
+
+        private string BuildSessionFlags(InstallSessionOptions options)
+        {
+            var flags = new List<string>();
+            
+            if (options.Reinstall) flags.Add("-r");
+            if (options.AllowDowngrade) flags.Add("-d");  
+            if (options.GrantPermissions) flags.Add("-g");
+            if (options.UserId.HasValue) flags.Add($"--user {options.UserId.Value}");
+            
+            return string.Join(' ', flags);
+        }
+
+        private InstallErrorType ParseInstallError(string error)
+        {
+            var upperError = error.ToUpperInvariant();
+            
+            // PM Session Errors
+            if (upperError.Contains("INSTALL_FAILED_MISSING_SPLIT")) return InstallErrorType.MissingSplit;
+            if (upperError.Contains("INSTALL_FAILED_UPDATE_INCOMPATIBLE")) return InstallErrorType.SignatureMismatch;
+            if (upperError.Contains("INSTALL_FAILED_INSUFFICIENT_STORAGE")) return InstallErrorType.InsufficientStorage;
+            if (upperError.Contains("INSTALL_FAILED_INVALID_APK")) return InstallErrorType.InvalidApk;
+            if (upperError.Contains("INSTALL_FAILED_VERSION_DOWNGRADE")) return InstallErrorType.VersionDowngrade;
+            
+            // Additional PM Errors
+            if (upperError.Contains("INSTALL_FAILED_OLDER_SDK")) return InstallErrorType.IncompatibleSdk;
+            if (upperError.Contains("INSTALL_FAILED_CONFLICTING_PROVIDER")) return InstallErrorType.ConflictingProvider;
+            if (upperError.Contains("INSTALL_FAILED_REPLACE_COULDNT_DELETE")) return InstallErrorType.ReplaceFailed;
+            if (upperError.Contains("INSTALL_FAILED_DEXOPT")) return InstallErrorType.DexOptFailed;
+            if (upperError.Contains("INSTALL_FAILED_ABORTED")) return InstallErrorType.Aborted;
+            if (upperError.Contains("INSTALL_FAILED_INTERNAL_ERROR")) return InstallErrorType.InternalError;
+            if (upperError.Contains("INSTALL_FAILED_USER_RESTRICTED")) return InstallErrorType.UserRestricted;
+            if (upperError.Contains("INSTALL_FAILED_VERIFICATION_TIMEOUT")) return InstallErrorType.VerificationTimeout;
+            if (upperError.Contains("INSTALL_FAILED_VERIFICATION_FAILURE")) return InstallErrorType.VerificationFailure;
+            if (upperError.Contains("INSTALL_FAILED_PACKAGE_CHANGED")) return InstallErrorType.PackageChanged;
+            if (upperError.Contains("INSTALL_FAILED_UID_CHANGED")) return InstallErrorType.UidChanged;
+            if (upperError.Contains("INSTALL_FAILED_VERSION_DOWNGRADE")) return InstallErrorType.VersionDowngrade;
+            if (upperError.Contains("INSTALL_FAILED_PERMISSION_MODEL_DOWNGRADE")) return InstallErrorType.PermissionModelDowngrade;
+            
+            // ADB/Device Errors
+            if (upperError.Contains("DEVICE_NOT_FOUND") || upperError.Contains("DEVICE_OFFLINE")) return InstallErrorType.DeviceOffline;
+            if (upperError.Contains("TIMEOUT") || upperError.Contains("TIMED_OUT")) return InstallErrorType.Timeout;
+            if (upperError.Contains("PERMISSION_DENIED")) return InstallErrorType.PermissionDenied;
+            if (upperError.Contains("NO_SPACE_LEFT")) return InstallErrorType.InsufficientStorage;
+            
+            // Network/Transfer Errors
+            if (upperError.Contains("NETWORK_ERROR") || upperError.Contains("CONNECTION_FAILED")) return InstallErrorType.NetworkError;
+            if (upperError.Contains("TRANSFER_FAILED") || upperError.Contains("WRITE_FAILED")) return InstallErrorType.TransferFailed;
+            
+            return InstallErrorType.Unknown;
+        }
+
+        private static string FormatBytes(long bytes)
+        {
+            string[] sizes = { "B", "KB", "MB", "GB" };
+            var order = 0;
+            var size = bytes;
+            while (size >= 1024 && order < sizes.Length - 1)
+            {
+                order++;
+                size /= 1024;
+            }
+            return $"{size:0.##} {sizes[order]}";
+        }
+
+        #endregion
     }
 }

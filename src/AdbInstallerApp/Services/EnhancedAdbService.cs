@@ -203,7 +203,7 @@ namespace AdbInstallerApp.Services
             return string.Join(' ', flags);
         }
 
-        private static async Task EnsureSuccessAsync(ProcResult result)
+        private static Task EnsureSuccessAsync(ProcResult result)
         {
             if (result.ExitCode != 0)
             {
@@ -216,6 +216,8 @@ namespace AdbInstallerApp.Services
             {
                 throw new InvalidOperationException($"Installation failed: {result.StdOut.Trim()}");
             }
+            
+            return Task.CompletedTask;
         }
 
         public static bool ShouldUseSession(string[] files)

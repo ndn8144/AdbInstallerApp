@@ -47,23 +47,28 @@ internal static class InfrastructureTests
         
         var statusService = new GlobalStatusService();
         
-        Console.WriteLine($"Initial: {statusService.StatusText} (Busy: {statusService.IsBusy})");
+        Console.WriteLine($"Initial: HasActiveStatus: {statusService.HasActiveStatus}, StackDepth: {statusService.StatusStackDepth}");
         
-        using (var scope1 = statusService.Push("Installing APK..."))
+        using (var scope1 = statusService.CreateStatusScope("Installing APK...", StatusType.Info))
         {
-            Console.WriteLine($"Push 1: {statusService.StatusText} (Busy: {statusService.IsBusy})");
+            Console.WriteLine($"Push 1: HasActiveStatus: {statusService.HasActiveStatus}, StackDepth: {statusService.StatusStackDepth}");
             
-            using (var scope2 = statusService.Push("Writing files..."))
+            using (var scope2 = statusService.CreateStatusScope("Writing files...", StatusType.Progress))
             {
-                Console.WriteLine($"Push 2: {statusService.StatusText} (Busy: {statusService.IsBusy})");
+                Console.WriteLine($"Push 2: HasActiveStatus: {statusService.HasActiveStatus}, StackDepth: {statusService.StatusStackDepth}");
+                
+                statusService.UpdateProgress("Writing files...", 50.0);
+                Console.WriteLine($"Progress updated to 50%");
             }
             
-            Console.WriteLine($"After Pop 2: {statusService.StatusText} (Busy: {statusService.IsBusy})");
+            Console.WriteLine($"After Pop 2: HasActiveStatus: {statusService.HasActiveStatus}, StackDepth: {statusService.StatusStackDepth}");
         }
         
-        Console.WriteLine($"After Pop 1: {statusService.StatusText} (Busy: {statusService.IsBusy})");
+        Console.WriteLine($"After Pop 1: HasActiveStatus: {statusService.HasActiveStatus}, StackDepth: {statusService.StatusStackDepth}");
         
-        statusService.UpdateIdleStatus(3, 5);
-        Console.WriteLine($"Idle Update: {statusService.StatusText}");
+        statusService.SetSuccess("Operation completed successfully");
+        Console.WriteLine($"Success status set");
+        
+        statusService.Dispose();
     }
 }

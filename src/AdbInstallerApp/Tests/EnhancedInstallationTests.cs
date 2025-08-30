@@ -267,24 +267,5 @@ namespace AdbInstallerApp.Tests
         }
     }
 
-    /// <summary>
-    /// Simple test runner program
-    /// </summary>
-    public class TestRunner
-    {
-        public static async Task Main(string[] args)
-        {
-            var tests = new EnhancedInstallationTests();
-            
-            try
-            {
-                await tests.RunAllTestsAsync();
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine($"Test execution failed: {ex.Message}");
-                Environment.Exit(1);
-            }
-        }
-    }
+
 }

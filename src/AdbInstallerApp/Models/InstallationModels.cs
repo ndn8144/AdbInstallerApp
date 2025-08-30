@@ -83,6 +83,54 @@ namespace AdbInstallerApp.Models
 
 
     /// <summary>
+    /// Installation error types for PM session failures
+    /// </summary>
+    public enum InstallErrorType
+    {
+        Unknown,
+        MissingSplit,
+        SignatureMismatch,
+        InsufficientStorage,
+        InvalidApk,
+        VersionDowngrade,
+        PermissionDenied,
+        DeviceOffline,
+        Timeout,
+        IncompatibleSdk,
+        ConflictingProvider,
+        ReplaceFailed,
+        DexOptFailed,
+        Aborted,
+        InternalError,
+        UserRestricted,
+        VerificationTimeout,
+        VerificationFailure,
+        PackageChanged,
+        UidChanged,
+        PermissionModelDowngrade,
+        NetworkError,
+        TransferFailed
+    }
+
+    /// <summary>
+    /// Custom exception for installation failures with error type classification
+    /// </summary>
+    public class InstallationException : Exception
+    {
+        public InstallErrorType ErrorType { get; }
+
+        public InstallationException(string message, InstallErrorType errorType) : base(message)
+        {
+            ErrorType = errorType;
+        }
+
+        public InstallationException(string message, InstallErrorType errorType, Exception innerException) : base(message, innerException)
+        {
+            ErrorType = errorType;
+        }
+    }
+
+    /// <summary>
     /// Device properties for split APK matching
     /// </summary>
     public record DeviceProps(
@@ -416,6 +464,71 @@ namespace AdbInstallerApp.Models
         Validate = 0,    // 15% weight
         Session = 1,     // 10% weight  
         Write = 2,       // 60% weight
-        Commit = 3       // 15% weight
+        Commit = 3,      // 15% weight
+        Planning = 4,    // Planning phase
+        Installing = 5,  // Installation phase
+        Completed = 6,   // Completed phase
+        Failed = 7       // Failed phase
     }
+
+    /// <summary>
+    /// Advanced installation options for orchestrator
+    /// </summary>
+    public record AdvancedInstallOptions(
+        bool Reinstall = false,
+        bool AllowDowngrade = false,
+        bool GrantPermissions = false,
+        int MaxRetries = 3,
+        InstallStrategy? ForceStrategy = null
+    );
+
+
+
+    /// <summary>
+    /// Installation result with comprehensive statistics
+    /// </summary>
+    public record InstallationResult(
+        bool IsSuccess,
+        int TotalUnits,
+        int SuccessfulUnits,
+        int FailedUnits,
+        int SkippedUnits,
+        TimeSpan Duration,
+        List<string> Errors
+    )
+    {
+        public static InstallationResult Failed(string error) => new(
+            IsSuccess: false,
+            TotalUnits: 0,
+            SuccessfulUnits: 0,
+            FailedUnits: 1,
+            SkippedUnits: 0,
+            Duration: TimeSpan.Zero,
+            Errors: new List<string> { error }
+        );
+    }
+
+    /// <summary>
+    /// Installation progress tracking
+    /// </summary>
+    public record InstallationProgress(
+        InstallationPhase Phase,
+        string CurrentDevice,
+        int DeviceIndex,
+        int TotalDevices,
+        string? CurrentPackage = null,
+        int? UnitIndex = null,
+        int? TotalUnits = null,
+        string Message = ""
+    );
+
+    /// <summary>
+    /// PM session installation options
+    /// </summary>
+    public record InstallSessionOptions(
+        bool Reinstall = false,
+        bool AllowDowngrade = false,
+        bool GrantPermissions = false,
+        int? UserId = null
+    );
 }

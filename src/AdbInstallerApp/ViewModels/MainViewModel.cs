@@ -128,7 +128,16 @@ namespace AdbInstallerApp.ViewModels
         public string SelectedApksCountText => SelectedApksCount > 0 ? $"{SelectedApksCount} APK(s) selected" : "No APKs selected";
         public string StatusBarText => $"Ready - {Devices.Count} devices, {ApkFiles.Count} APKs, {ApkGroups.Count} groups ({ApkClassificationText})";
 
-        public MainViewModel()
+        public MainViewModel(
+            ILogBus logBus, 
+            IGlobalStatusService statusService, 
+            AdbService adbService,
+            DeviceMonitor deviceMonitor,
+            ApkRepoIndexer apkRepoIndexer,
+            ApkValidationService apkValidationService,
+            InstallOrchestrator installOrchestrator,
+            EnhancedInstallQueue enhancedInstallQueue,
+            IApkAnalyzerService apkAnalyzerService)
         {
             try
             {
@@ -137,21 +146,24 @@ namespace AdbInstallerApp.ViewModels
                 _settings = JsonSettings.Load();
                 AppendLog("✅ Settings loaded successfully");
 
-                _adb = new AdbService();
+                _adb = adbService;
                 AppendLog("✅ ADB service initialized");
 
-                _monitor = new DeviceMonitor(_adb);
-                _repo = new ApkRepoIndexer();
-                _apkValidator = new ApkValidationService();
-                _installer = new InstallOrchestrator(_adb);
+                _monitor = deviceMonitor;
+                _repo = apkRepoIndexer;
+                _apkValidator = apkValidationService;
+                _installer = installOrchestrator;
                 // TODO: Fix EnhancedInstallOrchestrator - temporarily commented out
                 // _multiGroupInstaller = new EnhancedInstallOrchestrator(_adb, Path.Combine(AppContext.BaseDirectory, "..", "..", "..", "tools", "platform-tools"));
                 _multiGroupInstaller = null; // Temporary fix
 
-                InstallQueue = new EnhancedInstallQueue(_installer, maxConcurrentOperations: 2);
-                KeyboardShortcuts = new KeyboardShortcutService(InstallQueue, OptimizedProgress);
+                InstallQueue = enhancedInstallQueue;
+                // KeyboardShortcuts will be initialized after InstallQueue is ready
 
-                MultiGroupInstall = new MultiGroupInstallViewModel(_multiGroupInstaller, this);
+                // MultiGroupInstall will be initialized after constructor completes to avoid circular dependency
+
+                // Initialize MultiGroupInstall after constructor completes
+                InitializeMultiGroupInstall();
 
                 ApkGroups.CollectionChanged += (s, e) => MultiGroupInstall.RefreshAvailableGroupsCommand.Execute(null);
 
@@ -193,6 +205,23 @@ namespace AdbInstallerApp.ViewModels
                 AppendLog($"❌ Initialization error: {ex.Message}");
                 System.Windows.MessageBox.Show($"Failed to initialize application: {ex.Message}",
                     "Initialization Error", System.Windows.MessageBoxButton.OK, System.Windows.MessageBoxImage.Error);
+            }
+        }
+
+        private void InitializeMultiGroupInstall()
+        {
+            try
+            {
+                MultiGroupInstall = new MultiGroupInstallViewModel(_multiGroupInstaller, this);
+                AppendLog("✅ Multi-group installation view initialized");
+                
+                // Initialize KeyboardShortcuts after InstallQueue is ready
+                KeyboardShortcuts = new KeyboardShortcutService(InstallQueue, OptimizedProgress);
+                AppendLog("✅ Keyboard shortcuts initialized");
+            }
+            catch (Exception ex)
+            {
+                AppendLog($"❌ Failed to initialize multi-group installation view: {ex.Message}");
             }
         }
 
@@ -989,6 +1018,9 @@ namespace AdbInstallerApp.ViewModels
 
         [RelayCommand]
         private void NavigateToMultiGroupInstall() => CurrentModule = "MultiGroupInstall";
+        
+        [RelayCommand]
+        private void NavigateToLogs() => CurrentModule = "Logs";
 
         // Additional Commands (existing)
         [RelayCommand]
@@ -1741,6 +1773,85 @@ Current Device Status:
 
             return false;
         }
+
+        #region Test Commands for Core Services
+
+        [RelayCommand]
+        private Task TestLogPerformance()
+        {
+            try
+            {
+                AppendLog("🧪 Testing LogBus performance...");
+                
+                var stopwatch = System.Diagnostics.Stopwatch.StartNew();
+                
+                // Generate test log entries
+                for (int i = 0; i < 1000; i++)
+                {
+                    AppendLog($"Test log entry {i + 1} - Performance testing in progress");
+                }
+                
+                stopwatch.Stop();
+                AppendLog($"✅ LogBus performance test completed in {stopwatch.ElapsedMilliseconds}ms");
+                AppendLog($"   Generated 1000 log entries");
+                AppendLog($"   Average: {stopwatch.ElapsedMilliseconds / 1000.0:F2}ms per entry");
+            }
+            catch (Exception ex)
+            {
+                AppendLog($"❌ LogBus performance test failed: {ex.Message}");
+            }
+            
+            return Task.CompletedTask;
+        }
+
+        [RelayCommand]
+        private Task TestStatusStack()
+        {
+            try
+            {
+                AppendLog("🧪 Testing GlobalStatusService stack management...");
+                
+                // Test status stack operations
+                var statusService = new GlobalStatusService();
+                
+                using (statusService.CreateStatusScope("Test Status 1", StatusType.Info))
+                {
+                    AppendLog("   Pushed Status 1");
+                    
+                    using (statusService.CreateStatusScope("Test Status 2", StatusType.Progress))
+                    {
+                        AppendLog("   Pushed Status 2");
+                        
+                        statusService.UpdateProgress("Test Progress", 50.0);
+                        AppendLog("   Updated progress to 50%");
+                        
+                        using (statusService.CreateStatusScope("Test Status 3", StatusType.Warning))
+                        {
+                            AppendLog("   Pushed Status 3");
+                            AppendLog($"   Current stack depth: {statusService.StatusStackDepth}");
+                        }
+                        
+                        AppendLog("   Popped Status 3");
+                    }
+                    
+                    AppendLog("   Popped Status 2");
+                }
+                
+                AppendLog("   Popped Status 1");
+                AppendLog($"   Final stack depth: {statusService.StatusStackDepth}");
+                
+                statusService.Dispose();
+                AppendLog("✅ Status stack test completed successfully");
+            }
+            catch (Exception ex)
+            {
+                AppendLog($"❌ Status stack test failed: {ex.Message}");
+            }
+            
+            return Task.CompletedTask;
+        }
+
+        #endregion
 
     }
 }
